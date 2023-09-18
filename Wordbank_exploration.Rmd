@@ -1,0 +1,40 @@
+---
+title: "wordbank"
+author: "Tilde Sloth"
+date: "2023-09-18"
+output: html_document
+---
+
+## Loading packages
+```{r}
+pacman::p_load(ggplot2, tidyverse)
+```
+
+## Loading data
+```{r}
+worddata <- read_csv("wordbank_instrument_data.csv")
+childdata <- read_csv("wordbank_administration_data.csv")
+
+#Merging data by child_id
+data <- merge(worddata, childdata, by = "child_id")
+```
+
+## Cleaning data
+```{r}
+#only looking at words
+data <- data %>%
+  filter(item_kind == "word")
+
+#removing words that are sounds
+data <- data %>%
+  filter(category != "sounds")
+
+#removing unimportant columns
+data <- subset(data, select = -c(downloaded.x, downloaded.y, age.y))
+
+#renaming age column
+data <- data %>%
+  rename(age = age.x)
+
+```
+
