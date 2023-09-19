@@ -1,6 +1,7 @@
 # Bachelor
 Tilde and Laurits' Bachelor project
 ## Datstructure
+```
 .
 ├── ...
 ├── Bachelor.rProj                           # Rproj for navigating folder in R
@@ -12,4 +13,4 @@ Tilde and Laurits' Bachelor project
 ├── Scripts                                  # Scripts used for datacleaning, manipulation and so on
 │   └── Wordbank_exploration.Rmd             # Dataloading and cleaning
 └── ...
-
+```
