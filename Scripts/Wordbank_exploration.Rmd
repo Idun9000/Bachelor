@@ -10,6 +10,7 @@ output: html_document
 pacman::p_load(ggplot2, tidyverse, rethinking)
 ```
 
+
 ## Loading data
 ```{r}
 worddata_usa <- read_csv("../Data/wordbank_instrument_data_us.csv")
