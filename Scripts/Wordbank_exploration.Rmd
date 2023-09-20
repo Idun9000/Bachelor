@@ -7,34 +7,67 @@ output: html_document
 
 ## Loading packages
 ```{r}
-pacman::p_load(ggplot2, tidyverse)
+pacman::p_load(ggplot2, tidyverse, rethinking)
 ```
 
 ## Loading data
 ```{r}
-worddata <- read_csv("wordbank_instrument_data.csv")
-childdata <- read_csv("wordbank_administration_data.csv")
+worddata_usa <- read_csv("../Data/wordbank_instrument_data_us.csv")
+childdata_usa <- read_csv("../Data/wordbank_administration_data_us.csv")
 
-#Merging data by child_id
-data <- merge(worddata, childdata, by = "child_id")
+#creating a list of all the children that have longitudinal data
+specialkids <- worddata_usa %>%
+    group_by(child_id)%>%
+    filter(n_distinct(age) > 1)%>%
+    distinct(child_id)
+
+#making a subset of all the children that have longitudinal data
+longitudinal_usa <- worddata_usa %>%
+  group_by(child_id) %>%
+  filter(n_distinct(age) > 1) %>%
+  ungroup()
+
+```
+
+## Merging data
+```{r}
+data_usa <- merge(longitudinal_usa, childdata_usa, by = "child_id")
 ```
 
 ## Cleaning data
 ```{r}
 #only looking at words
-data <- data %>%
+data_usa <- data_usa %>%
   filter(item_kind == "word")
 
 #removing words that are sounds
-data <- data %>%
+data_usa <- data_usa %>%
   filter(category != "sounds")
 
 #removing unimportant columns
-data <- subset(data, select = -c(downloaded.x, downloaded.y, age.y))
+data_usa <- subset(data_usa, select = -c(downloaded.x, downloaded.y, age.y, is_norming, ethnicity, race, birth_weight, born_early_or_late, gestational_age, zygosity, language_exposures, health_conditions, monolingual, typically_developing, value))
 
 #renaming age column
-data <- data %>%
+data_usa <- data_usa %>%
   rename(age = age.x)
+
+```
+
+
+## Making a smaller subset of data to work with
+```{r}
+subsetdata_usa <- data_usa %>% 
+    filter(child_id < 1600) # This is only 75 kids btw
+    
+```
+
+## Investigating data
+```{r}
+rethinking::precis(subsetdata_usa)
+```
+
+## Semantic distance
+```{r}
 
 ```
 
