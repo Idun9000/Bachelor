@@ -70,7 +70,9 @@ more_than_one_word_unique <- more_than_one_word %>% distinct(item_definition)
 ```{r}
 subsetdata_usa <- data_usa %>% 
     filter(child_id < 1600) # This is only 75 kids btw
-    
+
+# Save subset as csv for import in other files
+write.csv(subsetdata_usa, file = "../Data/75kidsubset.csv")
 
 ```
 
