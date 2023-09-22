@@ -32,7 +32,7 @@ longitudinal_usa <- worddata_usa %>%
 
 ## Merging data
 ```{r}
-data_usa <- merge(longitudinal_usa, childdata_usa, by = "child_id")
+data_usa <- merge(longitudinal_usa, childdata_usa, by = "child_id", "age")
 ```
 
 ## Cleaning data
@@ -46,11 +46,8 @@ data_usa <- data_usa %>%
   filter(category != "sounds")
 
 #removing unimportant columns
-data_usa <- subset(data_usa, select = -c(downloaded.x, downloaded.y, age.y, is_norming, ethnicity, race, birth_weight, born_early_or_late, gestational_age, zygosity, language_exposures, health_conditions, monolingual, typically_developing, value))
+data_usa <- subset(data_usa, select = -c(downloaded.x, downloaded.y, is_norming, ethnicity, race, birth_weight, born_early_or_late, gestational_age, zygosity, language_exposures, health_conditions, monolingual, typically_developing, value))
 
-#renaming age column
-data_usa <- data_usa %>%
-  rename(age = age.x)
 
 #changing item_id column
 data_usa$item_id <- substr(data_usa$item_id, start = 6, stop = nchar(data_usa$item_id))
@@ -79,6 +76,8 @@ write.csv(subsetdata_usa, file = "../Data/75kidsubset.csv")
 ## Investigating data
 ```{r}
 rethinking::precis(subsetdata_usa)
+
+
 ```
 
 ## Semantic distance
