@@ -7,7 +7,7 @@ output: html_document
 
 ## Loading packages
 ```{r}
-pacman::p_load(ggplot2, tidyverse, rethinking)
+pacman::p_load(ggplot2, tidyverse, rethinking, stringr)
 ```
 
 
@@ -52,6 +52,17 @@ data_usa <- subset(data_usa, select = -c(downloaded.x, downloaded.y, age.y, is_n
 data_usa <- data_usa %>%
   rename(age = age.x)
 
+#changing item_id column
+data_usa$item_id <- substr(data_usa$item_id, start = 6, stop = nchar(data_usa$item_id))
+
+data_usa <- data_usa %>% 
+    mutate(item_id = as.numeric(item_id))
+
+#looking at the unique "more than one words"
+more_than_one_word <- data_usa[str_detect(data_usa$item_definition, "\\s+"), ]
+
+more_than_one_word_unique <- more_than_one_word %>% distinct(item_definition)
+
 ```
 
 
@@ -60,6 +71,7 @@ data_usa <- data_usa %>%
 subsetdata_usa <- data_usa %>% 
     filter(child_id < 1600) # This is only 75 kids btw
     
+
 ```
 
 ## Investigating data
