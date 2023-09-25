@@ -5,17 +5,17 @@ This is where we manually do the magic??! ;)
 pacman::p_load(tidyverse, igraph)
 ```
 
-
 # Single out a child, and a timepoint
 ```{r}
 # Read dataset
 Words_known_for_child <- read.csv("../Data/75kidsubset.csv")
 ```
+
 ```{r}
 # Create vector of all child ID's
 Unique_Child_IDs <- unique(Words_known_for_child$child_id)
 
-# For child N in list filter for only first timepoint
+# Filter vector to only be for child N at first timepoint
 N <- 1 # The child we want to investigate
 filtered_Words_for_child <- Words_known_for_child %>% 
     filter(child_id == Unique_Child_IDs[N]) %>% #Only pick the N'th child
@@ -26,15 +26,11 @@ filtered_Words_for_child <- Words_known_for_child %>%
 #     select(age, child_id) %>% 
 #     unique
 ```
-```{r}
-filtered_Words_for_child %>% 
-    mutate(er_det_ens = comprehension/production) %>% 
-    select(comprehension,production) %>% 
-    unique
 
-Words_known_for_child %>% 
-    select(comprehension) %>% 
-    unique()
+```{r}
+
+
+
 ```
 
 
