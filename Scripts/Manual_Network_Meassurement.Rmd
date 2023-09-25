@@ -8,7 +8,8 @@ pacman::p_load(tidyverse, igraph)
 # Single out a child, and a timepoint
 ```{r}
 # Read dataset
-Words_known_for_child <- read.csv("../Data/75kidsubset.csv")
+Words_known_for_child <- read.csv("../Data/75kidsubset.csv") %>% 
+    mutate(word_length = nchar(uni_lemma))# Create vector of word_length
 ```
 
 ```{r}
@@ -21,6 +22,8 @@ filtered_Words_for_child <- Words_known_for_child %>%
     filter(child_id == Unique_Child_IDs[N]) %>% #Only pick the N'th child
     filter(age == min(age))
 
+
+
 ## Test to check filtering worked correct:)
 # filtered_Words_for_child %>% 
 #     select(age, child_id) %>% 
@@ -28,11 +31,113 @@ filtered_Words_for_child <- Words_known_for_child %>%
 ```
 
 ```{r}
+# ### SLOW SLOW SLOW!!! ###
+# edgelist <- data.frame()
+# for (i in 1:nrow(filtered_Words_for_child)) {
+#     for (j in 1:nrow(filtered_Words_for_child)) {
+#         if (i != j) {
+#             if (abs(filtered_Words_for_child$word_length[i] - filtered_Words_for_child$word_length[j]) <= 1) {
+#                 edge <- data.frame(from = filtered_Words_for_child$uni_lemma[i], to = filtered_Words_for_child$uni_lemma[j])
+#                 edgelist <- rbind(edgelist, edge)
+#             }
+#         }
+#     }
+# }
+```
 
+## Create an adj_matrix  
+```{r}
+# Create a vector of words used
+words <- filtered_Words_for_child$uni_lemma
 
+# Save vector of word_length
+word_length_vec <- filtered_Words_for_child$word_length
+
+#Create adjacency matrix
+adjacency_matrix <- matrix(abs(outer(word_length_vec,word_length_vec, FUN = "-")), # Create values for matrix
+                           nrow = length(words), ncol = length(words), # Define size of matrix
+                           dimnames = list(words, words)) #Give names to dimensions
+
+#Use ifelse as a vectorized function on the matrix
+adjacency_matrix <- ifelse(adjacency_matrix<=1,yes = 1, 0)
 
 ```
 
+
+# Create an igraph object
+```{r}
+igraph::graph_from_adjacency_matrix(adjacency_matrix)
+```
+
+
+### Find data for timepoint two
+```{r}
+# Create vector of all child ID's
+Unique_Child_IDs <- unique(Words_known_for_child$child_id)
+
+# Filter vector to only be for child N at first timepoint
+N <- 1 # The child we want to investigate
+filtered_Words_for_child <- Words_known_for_child %>% 
+    filter(child_id == Unique_Child_IDs[N]) %>% #Only pick the N'th child
+    filter(age == min(unique(age)))
+
+
+Time_N <- 1
+filtered_Words_for_child <- Words_known_for_child %>% 
+    filter(child_id == Unique_Child_IDs[N])
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Create my lag function
+```{r}
+my_lag_function <- function(string,shift){
+    # Takes a vector of strings and shifts the n final strings to beginning. The n amount is decided by shift.
+    length_of_string <- length(string)
+    
+    output <- c(test[(length_of_string-shift+1):length_of_string],test[1:(length_of_string-shift)])
+    return(output)
+}
+```
 
 
 
