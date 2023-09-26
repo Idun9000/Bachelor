@@ -71,6 +71,11 @@ data_usa <- data_usa %>%
   # Remove the * character from words that end with it
   mutate(item_definition = str_remove(item_definition, "\\*$"))
 
+#change words with /
+data_usa <- data_usa %>%
+  # Remove everything after the /
+  mutate(item_definition = str_remove_all(item_definition, "/.*"))
+
 #changing item_id column
 data_usa$item_id <- substr(data_usa$item_id, start = 6, stop = nchar(data_usa$item_id))
 
