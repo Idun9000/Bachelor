@@ -48,17 +48,29 @@ data_usa <- data_usa %>%
 #removing unimportant columns
 data_usa <- subset(data_usa, select = -c(downloaded.x, downloaded.y, is_norming, ethnicity, race, birth_weight, born_early_or_late, gestational_age, zygosity, language_exposures, health_conditions, monolingual, typically_developing, value))
 
+#looking at the unique "more than one words"
+more_than_one_word <- data_usa[str_detect(data_usa$item_definition, "\\s+"), ]
+
+more_than_one_word_unique <- more_than_one_word %>% distinct(item_definition)
+
+# Removing words that are two words
+data_usa <- data_usa %>%
+  mutate(item_definition = gsub(" \\(.*", "", item_definition)) %>%
+  filter(!grepl(" ", item_definition) | grepl(" \\(", item_definition))
+ 
+data_usa <- data_usa %>%
+  mutate(uni_lemma = gsub(" \\(.*", "", uni_lemma)) %>%
+  filter(!grepl(" ", uni_lemma) | grepl(" \\(", uni_lemma))
+ 
+data_usa <- data_usa %>%
+  mutate(english_gloss = gsub(" \\(.*", "", english_gloss)) %>%
+  filter(!grepl(" ", english_gloss) | grepl(" \\(", english_gloss))
 
 #changing item_id column
 data_usa$item_id <- substr(data_usa$item_id, start = 6, stop = nchar(data_usa$item_id))
 
 data_usa <- data_usa %>% 
     mutate(item_id = as.numeric(item_id))
-
-#looking at the unique "more than one words"
-more_than_one_word <- data_usa[str_detect(data_usa$item_definition, "\\s+"), ]
-
-more_than_one_word_unique <- more_than_one_word %>% distinct(item_definition)
 
 ```
 
@@ -67,19 +79,6 @@ more_than_one_word_unique <- more_than_one_word %>% distinct(item_definition)
 ```{r}
 subsetdata_usa <- data_usa %>% 
     filter(child_id < 1600) # This is only 75 kids btw
-
-# Removing words that are two words
-subsetdata_usa <- subsetdata_usa %>%
-  mutate(item_definition = gsub(" \\(.*", "", item_definition)) %>%
-  filter(!grepl(" ", item_definition) | grepl(" \\(", item_definition))
- 
-subsetdata_usa <- subsetdata_usa %>%
-  mutate(uni_lemma = gsub(" \\(.*", "", uni_lemma)) %>%
-  filter(!grepl(" ", uni_lemma) | grepl(" \\(", uni_lemma))
- 
-subsetdata_usa <- subsetdata_usa %>%
-  mutate(english_gloss = gsub(" \\(.*", "", english_gloss)) %>%
-  filter(!grepl(" ", english_gloss) | grepl(" \\(", english_gloss))
 
 # Save subset as csv for import in other files
 write.csv(subsetdata_usa, file = "../Data/75kidsubset.csv")
@@ -90,11 +89,22 @@ write.csv(subsetdata_usa, file = "../Data/75kidsubset.csv")
 ```{r}
 rethinking::precis(subsetdata_usa)
 
+# Looking at one child
 
+child1 <- data_usa %>% 
+    filter(child_id == 1416)
+
+child1 %>% 
+    filter(age == 16)
+
+child1 %>% 
+    filter(age == 22)
 ```
 
-## Semantic distance
-```{r}
 
-```
+
+
+
+
+
 
