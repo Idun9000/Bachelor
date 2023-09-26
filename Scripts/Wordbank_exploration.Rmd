@@ -53,7 +53,7 @@ more_than_one_word <- data_usa[str_detect(data_usa$item_definition, "\\s+"), ]
 
 more_than_one_word_unique <- more_than_one_word %>% distinct(item_definition)
 
-# Removing words that are two words
+#removing words that are two words
 data_usa <- data_usa %>%
   mutate(item_definition = gsub(" \\(.*", "", item_definition)) %>%
   filter(!grepl(" ", item_definition) | grepl(" \\(", item_definition))
@@ -65,6 +65,11 @@ data_usa <- data_usa %>%
 data_usa <- data_usa %>%
   mutate(english_gloss = gsub(" \\(.*", "", english_gloss)) %>%
   filter(!grepl(" ", english_gloss) | grepl(" \\(", english_gloss))
+
+#remove words that end with *
+data_usa <- data_usa %>% 
+  # Remove the * character from words that end with it
+  mutate(item_definition = str_remove(item_definition, "\\*$"))
 
 #changing item_id column
 data_usa$item_id <- substr(data_usa$item_id, start = 6, stop = nchar(data_usa$item_id))
