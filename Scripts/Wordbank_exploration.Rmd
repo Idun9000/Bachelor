@@ -131,6 +131,7 @@ sum(duplicated(child1_words)) #12 duplicates
 
 duplicated(child1_words) #we figure out that there are two inputs for some words (eg chicken with category = animal and chicken with category = food)
 
+
 ```
 
 
