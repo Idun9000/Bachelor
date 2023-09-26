@@ -82,6 +82,7 @@ data_usa$item_id <- substr(data_usa$item_id, start = 6, stop = nchar(data_usa$it
 data_usa <- data_usa %>% 
     mutate(item_id = as.numeric(item_id))
 
+
 ```
 
 
