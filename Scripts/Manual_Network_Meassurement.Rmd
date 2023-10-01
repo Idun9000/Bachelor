@@ -30,25 +30,10 @@ filtered_Words_for_child <- Words_known_for_child %>%
 #     unique
 ```
 
-```{r}
-# ### SLOW SLOW SLOW!!! ###
-# edgelist <- data.frame()
-# for (i in 1:nrow(filtered_Words_for_child)) {
-#     for (j in 1:nrow(filtered_Words_for_child)) {
-#         if (i != j) {
-#             if (abs(filtered_Words_for_child$word_length[i] - filtered_Words_for_child$word_length[j]) <= 1) {
-#                 edge <- data.frame(from = filtered_Words_for_child$uni_lemma[i], to = filtered_Words_for_child$uni_lemma[j])
-#                 edgelist <- rbind(edgelist, edge)
-#             }
-#         }
-#     }
-# }
-```
-
 ## Create an adj_matrix  
 ```{r}
 # Create a vector of words used
-words <- filtered_Words_for_child$uni_lemma
+words <- filtered_Words_for_child$item_definition
 
 # Save vector of word_length
 word_length_vec <- filtered_Words_for_child$word_length
@@ -58,8 +43,11 @@ adjacency_matrix <- matrix(abs(outer(word_length_vec,word_length_vec, FUN = "-")
                            nrow = length(words), ncol = length(words), # Define size of matrix
                            dimnames = list(words, words)) #Give names to dimensions
 
+
 #Use ifelse as a vectorized function on the matrix
 adjacency_matrix <- ifelse(adjacency_matrix<=1,yes = 1, 0)
+
+
 
 ```
 
@@ -88,6 +76,12 @@ filtered_Words_for_child <- Words_known_for_child %>%
 
 ```
 
+
+
+
+```{r}
+tildes_super_data<- as.matrix(read_csv("../Data/semantic_distances.csv"))
+```
 
 
 
