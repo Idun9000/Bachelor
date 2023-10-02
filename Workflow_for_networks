@@ -1,0 +1,32 @@
+# Workflow for finding network placement
+
+## Part one: Loading data
+
+1. Load data for all children with all ages for those children
+1.1 filter for child ID
+
+2. Load matrix of distance between words for lexical index (phonology, semantic etc.) (Dem tilde laver)
+2.1.Make adjacency matrix by using ifelse on relationship matrix:  ifelse(matrix >= limit, 1, 0) (by using a cutoff)
+2.2 Filter the matrix so only words learned at t1 remains: ifelse(matrix %in% list_of_t1_words, 1, 0)
+2.3 Remove all words with no edges
+
+3. Find all words in that is learned at t2
+3.1a if the word is already in the matrix, do a calculation of centrality
+3.1b.1 if the word isn't already in the matrix, calculate all edges for that vertic: 
+edges <- get_colnames(
+    for_row_that_is_word_at_t2(
+        filter(value == 1)
+    )
+)
+
+igraph::add_vertice(word_name, edges)
+
+3.1b.2 Insert that vertic in the network.
+3.1b.3 do calculation of centrality for that matrix.
+
+
+
+
+
+
+

@@ -9,7 +9,7 @@ pacman::p_load(tidyverse, igraph)
 ```{r}
 # Read dataset
 Words_known_for_child <- read.csv("../Data/75kidsubset.csv") %>% 
-    mutate(word_length = nchar(uni_lemma))# Create vector of word_length
+    mutate(word_length = nchar(item_definition))# Create vector of word_length
 ```
 
 ```{r}
@@ -30,21 +30,6 @@ filtered_Words_for_child <- Words_known_for_child %>%
 #     unique
 ```
 
-```{r}
-# ### SLOW SLOW SLOW!!! ###
-# edgelist <- data.frame()
-# for (i in 1:nrow(filtered_Words_for_child)) {
-#     for (j in 1:nrow(filtered_Words_for_child)) {
-#         if (i != j) {
-#             if (abs(filtered_Words_for_child$word_length[i] - filtered_Words_for_child$word_length[j]) <= 1) {
-#                 edge <- data.frame(from = filtered_Words_for_child$uni_lemma[i], to = filtered_Words_for_child$uni_lemma[j])
-#                 edgelist <- rbind(edgelist, edge)
-#             }
-#         }
-#     }
-# }
-```
-
 ## Create an adj_matrix  
 ```{r}
 # Create a vector of words used
@@ -60,6 +45,8 @@ adjacency_matrix <- matrix(abs(outer(word_length_vec,word_length_vec, FUN = "-")
 
 #Use ifelse as a vectorized function on the matrix
 adjacency_matrix <- ifelse(adjacency_matrix<=1,yes = 1, 0)
+id_matrix <- diag(length(adjacency_matrix[1,])) # Create a identity matrix of length(adjaceny_matrix)
+adjacency_matrix <- adjacency_matrix-id_matrix
 
 ```
 
@@ -75,18 +62,54 @@ graph_object <- igraph::graph_from_adjacency_matrix(adjacency_matrix)
 # Create vector of all child ID's
 Unique_Child_IDs <- unique(Words_known_for_child$child_id)
 
-# Filter vector to only be for child N at first timepoint
+# Filter vector to only be child N at first timepoint
+
 N <- 1 # The child we want to investigate
-filtered_Words_for_child <- Words_known_for_child %>% 
+Time_N <- 1 # The timepoint for this child
+filtered_Words_for_child1_t1 <- Words_known_for_child %>% 
     filter(child_id == Unique_Child_IDs[N]) %>% #Only pick the N'th child
-    filter(age == min(unique(age)))
+    arrange(age) %>%
+    filter(age == unique(age)[Time_N])
 
+#Repeat filter chunk to save timepoint 2
+Time_N <- 2
+filtered_Words_for_child1_t2 <- Words_known_for_child %>% 
+    filter(child_id == Unique_Child_IDs[N]) %>% 
+    arrange(age) %>%
+    filter(age == unique(age)[Time_N])
 
-Time_N <- 1
-filtered_Words_for_child <- Words_known_for_child %>% 
-    filter(child_id == Unique_Child_IDs[N])
+count(filtered_Words_for_child, age)
+filtered_Words_for_child %>% 
+    group_by(age) %>% 
+    count(value)
 
 ```
+
+# TRYING TO SAVE ALL GRAPHS IN A VECTOR AND RUN A FUNCTION ON THAT VECTOR
+## STEP 1: Create a vector of words that need to be added to t1 graph (all words at t2-all words at t1), and then a vector of words that need to be tested (all words at t2)
+
+```{r}
+All_words_at_t1 <- filtered_Words_for_child1_t1 %>%
+    mutate(value_t1 = value) %>% 
+    select(item_definition,value_t1)
+All_words_at_t1 <- All_words_at_t1$item_definition
+
+
+All_words_at_t2 <- filtered_Words_for_child1_t2 %>%
+mutate(value_t2 = value) %>% 
+    select(item_definition,value_t2)
+All_words_at_t2 <- All_words_at_t2$item_definition
+
+
+words_merge<- merge(All_words_at_t1,All_words_at_t2)
+
+
+t2_words_notin_t1 <- setdiff(All_words_at_t2, All_words_at_t1)
+
+
+which(!(All_words_at_t1 %in% All_words_at_t2))
+```
+
 
 
 
