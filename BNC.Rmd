@@ -9,10 +9,6 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
-pacman::p_load()
-
-```
 
 ```{r}
 phonetic_distance <- read_csv("Data/phonetic_distance.csv")
