@@ -16,7 +16,7 @@ phonetic_distance <- read_csv("../Data/phonetic_distance.csv")
 #changing rownames and deleting first column
 rownames(phonetic_distance) <- phonetic_distance$...1
 
-phonetic_distance <- phonetic_distance[,2:619]
+phonetic_distance <- subset(phonetic_distance, select = -...1)
 
 #max changes between words 
 max(phonetic_distance)
