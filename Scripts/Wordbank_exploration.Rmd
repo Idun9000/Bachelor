@@ -4,7 +4,7 @@ author: "Tilde Sloth & Laurits ;-)))"
 date: "2023-09-18"
 output: html_document
 ---
-
+# CLEANING DATASET
 ## Loading packages
 ```{r}
 pacman::p_load(ggplot2, tidyverse, rethinking, stringr)
@@ -97,35 +97,7 @@ data_usa$value[is.na(data_usa$value)] <- 0
 
 print(data_usa$value)
 ```
-
-
-## Making a smaller subset of data to work with
-```{r}
-subsetdata_usa <- data_usa %>% 
-    filter(child_id < 1600) # This is only 75 kids btw
-
-# Save subset as csv for import in other files
-write.csv(subsetdata_usa, file = "../Data/75kidsubset.csv")
-
-```
-
-## Investigating data
-```{r}
-rethinking::precis(subsetdata_usa)
-
-#looking at one child
-
-child1 <- data_usa %>% 
-    filter(child_id == 1416)
-
-child1_16 <- child1 %>% 
-    filter(age == 16)
-
-child1 %>% 
-    filter(age == 22)
-```
-
-
+## Investigating duplicate items
 ```{r}
 #unique words
 length(unique(data_usa$item_definition))
@@ -146,10 +118,48 @@ duplicated(child1_words) #we figure out that there are two inputs for some words
 
 ```
 
+### Removing duplicate items
+```{r}
+
+child1_16 %>% 
+    group_by(item_definition) %>% 
+    filter(n() > 1) %>% 
+    ungroup %>% 
+    arrange(item_definition)
+
+items_to_remove = c(220, 23, 412, 421, 424, 30, 129, 477, 486, 260, 154, 502)
+
+for (i in items_to_remove){
+    data_usa <- subset(data_usa, item_id != i)
+}
+
+```
 
 
+## Making a smaller subset of data to work with
+```{r}
+subsetdata_usa <- data_usa %>% 
+    filter(child_id < 1600) # This is only 75 kids btw
 
+# Save subset as csv for import in other files
+write.csv(subsetdata_usa, file = "../Data/75kidsubset.csv")
 
+```
 
+## Investigating data
+```{r}
+#rethinking::precis(subsetdata_usa)
+
+#looking at one child
+
+child1 <- data_usa %>% 
+    filter(child_id == 1416)
+
+child1_16 <- child1 %>% 
+    filter(age == 16)
+
+child1 %>% 
+    filter(age == 22)
+```
 
 
