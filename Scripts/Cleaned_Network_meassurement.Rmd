@@ -1,0 +1,149 @@
+---
+title: "Clean Network Measurement"
+author: "Laurits Lymgbæk"
+date: "2023-10-03"
+output: html_document
+---
+# Setup for packages and functions
+## Load packages
+```{r}
+### install.packages("pacman")
+pacman::p_load(tidyverse, igraph)
+```
+
+## Load files
+```{r}
+# Load the data
+Child_Data <- read_csv(file = "../Data/75kidsubset.csv") %>% 
+    arrange(item_definition) %>% 
+    arrange(child_id) %>% 
+    arrange(age)#Subset of data for quick functions
+# Data <- read_csv("Insert_not_subset here") #Total dataset
+
+# Load semantics df
+semantics_csv <- read_csv(file = "../Data/semantic_distances.csv")
+## This matrix has row names as 
+ADJ_MATRIX_SEMANTICS <- as.matrix(semantics_csv[,-1])
+rownames(ADJ_MATRIX_SEMANTICS) <- semantics_csv$...1
+word_list <- semantics_csv$...1
+
+
+# Load phonetic distance df
+phonetics_csv <- read_csv(file = "../Data/phonetic_distance_normalized.csv")
+## Make a matrix and save rownames
+Adj_matrix_phonetic <- as.matrix(phonetics_csv[,-1])
+rownames(Adj_matrix_phonetic) <- phonetics_csv$...1
+
+# Clean up environment
+rm(phonetics_csv, semantics_csv)
+```
+
+## Filter this data futher, so we only have data for one kid
+```{r}
+Child_ID <- 8 # The child we want to investigate
+Time_ID <- 2 # The timepoint for this child
+
+filtered_Words_for_child <- Child_Data %>% 
+    filter(child_id == unique(child_id)[Child_ID]) %>% #Only pick this child
+    arrange(age) %>%
+    filter(age == unique(age)[Time_ID]) # For this age (smallest and up)
+```
+
+
+## Find mean of 3rd quantile for numbers in semantics matrix
+```{r}
+Summary_of_semantics <- as.data.frame(summary(ADJ_MATRIX_SEMANTICS))[,2:3] %>%
+    separate_wider_delim(cols = Freq,delim = ":",names = c("Summary_Name", "Summary_Number")) %>% 
+    mutate(Summary_Name = str_trim(Summary_Name),
+           Summary_Number = as.numeric(str_trim(Summary_Number)))
+
+# q3_semantics <- Summary_of_semantics %>% 
+#     filter(Summary_Name == "3rd Qu.")
+q3_semantics <- Summary_of_semantics %>% 
+    filter(Summary_Name == "Median")
+
+
+
+mean_of_q3 <- mean(q3_semantics$Summary_Number)
+
+rm(Summary_of_semantics, q3_semantics) # Clean up environment
+
+```
+
+### Create a adj matrix of semantic edges
+```{r}
+# Create matrix edges
+SEMANTIC_EDGES_MATRIX <- ifelse(ADJ_MATRIX_SEMANTICS>=mean_of_q3,yes = 1,no = 0)
+# find relationship between: Edges / Verticies
+sum(SEMANTIC_EDGES_MATRIX)/length(SEMANTIC_EDGES_MATRIX)
+```
+## Create adj matrix for child N where an edge occurs if the child know both words.
+```{r}
+filtered_Words_for_child %>% 
+    select(item_definition,value) %>% 
+    arrange((item_definition)) %>% 
+    arrange(desc(value))
+
+KNOWN_WORDS_NUMERIC <- filtered_Words_for_child$value
+KNOWN_WORDS_STRING <-  filtered_Words_for_child$item_definition
+
+
+# Create adjacency matrix
+KNOWN_WORDS_IDENTIFICATION_MATRIX <- matrix(abs(outer(KNOWN_WORDS_NUMERIC, KNOWN_WORDS_NUMERIC, FUN = "*")), # Create values for matrix
+                           nrow = length(KNOWN_WORDS_STRING), ncol = length(KNOWN_WORDS_STRING), # Define size of matrix
+                           dimnames = list(KNOWN_WORDS_STRING, KNOWN_WORDS_STRING)) #Give names to dimensions
+
+
+id_matrix <- diag(length(KNOWN_WORDS_IDENTIFICATION_MATRIX[1,])) # Create a identity matrix of length(adjaceny_matrix)
+REMOVE_SELF_EDGES <- KNOWN_WORDS_IDENTIFICATION_MATRIX*id_matrix # Create a matrix that has a 1 if the word triggers an edge with itself.
+KNOWN_WORDS_IDENTIFICATION_MATRIX <- KNOWN_WORDS_IDENTIFICATION_MATRIX - REMOVE_SELF_EDGES # Remove self edges from known words matrix
+
+```
+
+
+
+### Multiply known_words_martrix with semantics_edges_matrix and divide with / 2
+```{r}
+CHILD_N_SEMATNIC_EDGES_AT_TIME_N <- SEMANTIC_EDGES_MATRIX * KNOWN_WORDS_IDENTIFICATION_MATRIX
+
+GRAPH_OBJECT <- graph_from_adjacency_matrix(CHILD_1_SEMATNIC_EDGES_AT_T1, mode = "undirected")
+
+V(GRAPH_OBJECT)$size <- 1
+#V(GRAPH_OBJECT)$label <-
+E(GRAPH_OBJECT)$arrow.mode <- 0
+#plot(GRAPH_OBJECT)
+```
+
+
+```{r}
+## Create a Unknown variable that contains all words not known by the child.
+names_to_remove <- filtered_Words_for_child %>% 
+    filter(filtered_Words_for_child$value == 0)
+names_to_remove <- names_to_remove$item_definition
+vertices_to_remove <- which(V(GRAPH_OBJECT)$name %in% names_to_remove)
+
+GRAPH_OBJECT = delete.vertices(GRAPH_OBJECT, vertices_to_remove)
+
+l <- layout_with_kk(GRAPH_OBJECT)
+# l <- layout_with_fr(GRAPH_OBJECT)
+# l <- layout_in_circle(GRAPH_OBJECT)
+
+plot(GRAPH_OBJECT, layout=l)
+vertices(GRAPH_OBJECT)
+centralization.betweenness(GRAPH_OBJECT)
+
+```
+
+```{r}
+
+
+
+```
+
+
+
+
+
+
+
+

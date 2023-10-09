@@ -38,7 +38,7 @@ words <- filtered_Words_for_child$uni_lemma
 # Save vector of word_length
 word_length_vec <- filtered_Words_for_child$word_length
 
-#Create adjacency matrix
+# Create adjacency matrix
 adjacency_matrix <- matrix(abs(outer(word_length_vec,word_length_vec, FUN = "-")), # Create values for matrix
                            nrow = length(words), ncol = length(words), # Define size of matrix
                            dimnames = list(words, words)) #Give names to dimensions
