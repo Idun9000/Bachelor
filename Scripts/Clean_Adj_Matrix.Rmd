@@ -1,0 +1,127 @@
+---
+title: "Clean_Adj_Matrix"
+author: "Laurits Lyngbæk"
+date: "2023-10-10"
+output: html_document
+---
+
+# SETUP
+## LOAD PACKAGES
+```{r}
+### install.packages("pacman")
+pacman::p_load(tidyverse)
+```
+
+# Create semantics matrix
+## Load Semantics
+```{r}
+# Load semantics df
+semantics_csv <- read_csv(file = "../Data/semantic_distances.csv")
+## This matrix has row names as a column
+ADJ_MATRIX_SEMANTICS <- as.matrix(semantics_csv[,-1]) # Save a copy without the name-column
+rownames(ADJ_MATRIX_SEMANTICS) <- semantics_csv$...1 # Set the row names of the copied matrix as the name-column from the original matrix
+```
+
+## Find mean of 3rd quantile for numbers in semantics matrix
+```{r}
+
+# Create a summary of adj matrix and split strings so we can filter for statistic and get the number
+Summary_of_semantics <- as.data.frame(summary(ADJ_MATRIX_SEMANTICS))[,2:3] %>%
+    separate_wider_delim(cols = Freq,delim = ":",names = c("Summary_Name", "Summary_Number")) %>% 
+    mutate(Summary_Name = str_trim(Summary_Name),
+           Summary_Number = as.numeric(str_trim(Summary_Number)))
+
+# Filter for the 3rd quantile of each row
+q3_semantics <- Summary_of_semantics %>% 
+     filter(Summary_Name == "3rd Qu.")
+
+# Find the mean 3rd quantile value
+mean_of_q3 <- mean(q3_semantics$Summary_Number)
+hist(x = q3_semantics$Summary_Number, main = title(paste("The mean 3rd quantile value is", round(mean_of_q3,2)))
+     )
+
+rm(Summary_of_semantics, q3_semantics, Summary_of_semantics) # Clean up environment
+```
+
+### Create a adj matrix of semantic edges
+```{r}
+# Create matrix edges
+SEMANTIC_EDGES_MATRIX <- ifelse(ADJ_MATRIX_SEMANTICS>=mean_of_q3,yes = 1,no = 0)
+
+
+rm(q3_semantics, mean_of_q3, ADJ_MATRIX_SEMANTICS)
+```
+### Make sure no vertices has an edge to themselves
+```{r}
+ID_matrix <- diag( #Create a identity matrix
+    length(SEMANTIC_EDGES_MATRIX[1,])) #of length of matrix (618)
+NO_SELF_EDGES <- (ID_matrix-1)*-1
+
+SEMANTIC_EDGES_MATRIX <- SEMANTIC_EDGES_MATRIX*NO_SELF_EDGES
+
+```
+
+
+## Save matrix
+```{r}
+write.table(SEMANTIC_EDGES_MATRIX, '../Data/Cleaned/SEMANTIC_EDGES_MATRIX.txt', sep = ",")
+```
+
+
+
+# Create phonological matrix
+## Load Semantics
+```{r}
+# Load semantics df
+phonetic_distance <- read_csv(file = "../Data/phonetic_distance.csv")
+## This matrix has row names as a column
+ADJ_PHONETIC_DISTANCE <- as.matrix(phonetic_distance[,-1]) # Save a copy without the name-column
+rownames(ADJ_PHONETIC_DISTANCE) <- phonetic_distance$...1 # Set the row names of the copied matrix as the name-column from the original matrix
+```
+
+## Find mean of 3rd quantile for numbers in semantics matrix
+```{r}
+
+# Create a summary of adj matrix and split strings so we can filter for statistic and get the number
+Summary_of_phonetics <- as.data.frame(summary(ADJ_PHONETIC_DISTANCE))[,2:3] %>%
+    separate_wider_delim(cols = Freq,delim = ":",names = c("Summary_Name", "Summary_Number")) %>% 
+    mutate(Summary_Name = str_trim(Summary_Name),
+           Summary_Number = as.numeric(str_trim(Summary_Number)))
+
+# Filter for the 3rd quantile of each row
+q1_phonetics <- Summary_of_phonetics %>% 
+     filter(Summary_Name == "1st Qu.")
+
+# Find the mean 3rd quantile value
+mean_of_q1 <- mean(q1_phonetics$Summary_Number)
+hist(x = q1_phonetics$Summary_Number, main = title(paste("The mean 1st quantile value is", round(mean_of_q1,2))))
+
+rm(Summary_of_semantics, q3_semantics, Summary_of_semantics) # Clean up environment
+```
+
+### Create a adj matrix of semantic edges
+```{r}
+# Create matrix edges
+PHONETIC_EDGES_MATRIX <- ifelse(ADJ_PHONETIC_DISTANCE<=2,yes = 1,no = 0)
+
+
+rm(q1_semantics, mean_of_q1, ADJ_MATRIX_SEMANTICS)
+```
+### Make sure no vertices has an edge to themselves
+```{r}
+ID_matrix <- diag( #Create a identity matrix
+    length(PHONETIC_EDGES_MATRIX[1,])) #of length of matrix (618)
+NO_SELF_EDGES <- (ID_matrix-1)*-1
+
+PHONETIC_EDGES_MATRIX <- PHONETIC_EDGES_MATRIX*NO_SELF_EDGES
+
+```
+
+
+## Save matrix
+```{r}
+write.table(PHONETIC_EDGES_MATRIX, '../Data/Cleaned/PHONETIC_EDGES_MATRIX.txt', sep = ",")
+```
+
+
+

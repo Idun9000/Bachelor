@@ -8,7 +8,7 @@ output: html_document
 ## Load packages
 ```{r}
 ### install.packages("pacman")
-pacman::p_load(tidyverse, igraph)
+pacman::p_load(tidyverse, igraph, purrr)
 ```
 
 ## Load files
@@ -22,17 +22,17 @@ Child_Data <- read_csv(file = "../Data/75kidsubset.csv") %>%
 
 # Load semantics df
 semantics_csv <- read_csv(file = "../Data/semantic_distances.csv")
-## This matrix has row names as 
-ADJ_MATRIX_SEMANTICS <- as.matrix(semantics_csv[,-1])
-rownames(ADJ_MATRIX_SEMANTICS) <- semantics_csv$...1
-word_list <- semantics_csv$...1
+## This matrix has row names as a column
+ADJ_MATRIX_SEMANTICS <- as.matrix(semantics_csv[,-1]) # Save a copy without the name-column
+rownames(ADJ_MATRIX_SEMANTICS) <- semantics_csv$...1 # Set the row names of the copied matrix as the name-column from the original matrix
+WORD_LIST <- semantics_csv$...1 # Save a list of words that a child can learn 
 
 
 # Load phonetic distance df
 phonetics_csv <- read_csv(file = "../Data/phonetic_distance_normalized.csv")
 ## Make a matrix and save rownames
-Adj_matrix_phonetic <- as.matrix(phonetics_csv[,-1])
-rownames(Adj_matrix_phonetic) <- phonetics_csv$...1
+ADJ_MATRIX_PHONETICS <- as.matrix(phonetics_csv[,-1])
+rownames(ADJ_MATRIX_PHONETICS) <- phonetics_csv$...1
 
 # Clean up environment
 rm(phonetics_csv, semantics_csv)
@@ -40,7 +40,7 @@ rm(phonetics_csv, semantics_csv)
 
 ## Filter this data futher, so we only have data for one kid
 ```{r}
-Child_ID <- 8 # The child we want to investigate
+Child_ID <- 7 # The child we want to investigate
 Time_ID <- 2 # The timepoint for this child
 
 filtered_Words_for_child <- Child_Data %>% 
@@ -57,10 +57,9 @@ Summary_of_semantics <- as.data.frame(summary(ADJ_MATRIX_SEMANTICS))[,2:3] %>%
     mutate(Summary_Name = str_trim(Summary_Name),
            Summary_Number = as.numeric(str_trim(Summary_Number)))
 
-# q3_semantics <- Summary_of_semantics %>% 
-#     filter(Summary_Name == "3rd Qu.")
 q3_semantics <- Summary_of_semantics %>% 
-    filter(Summary_Name == "Median")
+     filter(Summary_Name == "3rd Qu.")
+
 
 
 
@@ -76,6 +75,7 @@ rm(Summary_of_semantics, q3_semantics) # Clean up environment
 SEMANTIC_EDGES_MATRIX <- ifelse(ADJ_MATRIX_SEMANTICS>=mean_of_q3,yes = 1,no = 0)
 # find relationship between: Edges / Verticies
 sum(SEMANTIC_EDGES_MATRIX)/length(SEMANTIC_EDGES_MATRIX)
+
 ```
 ## Create adj matrix for child N where an edge occurs if the child know both words.
 ```{r}
@@ -106,7 +106,7 @@ KNOWN_WORDS_IDENTIFICATION_MATRIX <- KNOWN_WORDS_IDENTIFICATION_MATRIX - REMOVE_
 ```{r}
 CHILD_N_SEMATNIC_EDGES_AT_TIME_N <- SEMANTIC_EDGES_MATRIX * KNOWN_WORDS_IDENTIFICATION_MATRIX
 
-GRAPH_OBJECT <- graph_from_adjacency_matrix(CHILD_1_SEMATNIC_EDGES_AT_T1, mode = "undirected")
+GRAPH_OBJECT <- graph_from_adjacency_matrix(CHILD_N_SEMATNIC_EDGES_AT_TIME_N, mode = "undirected")
 
 V(GRAPH_OBJECT)$size <- 1
 #V(GRAPH_OBJECT)$label <-
@@ -130,15 +130,65 @@ l <- layout_with_kk(GRAPH_OBJECT)
 
 plot(GRAPH_OBJECT, layout=l)
 vertices(GRAPH_OBJECT)
-centralization.betweenness(GRAPH_OBJECT)
+centralization.closeness(GRAPH_OBJECT)
 
 ```
 
+
+## Try and save the graph for all words in a vector
 ```{r}
+nested_graph <- list(GRAPH_OBJECT) # Wrap list to allow for rep
+list_of_graphs <- rep(nested_graph,618) # Repeat list 618 times
+names(list_of_graphs) <-  KNOWN_WORDS_STRING # Name the graphs
+```
 
 
+
+# Generalizing adding an edge (making a functionish)
+```{r}
+## TRY TO GENERALISE THE EDGES ##
+### Save grandma in var
+word_to_find_edges_for <-  "grandma"
+### Check if the word exists in the list of 618 words
+word_to_find_edges_for %in% KNOWN_WORDS_STRING
+
+### Only pick the semantic edges for grandma:
+edges_for_word <- SEMANTIC_EDGES_MATRIX[,word_to_find_edges_for]
+
+### Save verticies (words) from graph:
+verticies_in_graph <- V(GRAPH_OBJECT)$name
+
+
+edges_to_graph_vertices <- edges_for_word[names(edges_for_word) %in% verticies_in_graph]
+
+edges_to_graph_vertices_true <- names(edges_to_graph_vertices[which(edges_to_graph_vertices==1)])
+
+edge_list <- c(#Make df into a string again
+    rbind( # Bind word_to_find_edges_for before each edge
+        word_to_find_edges_for,edges_to_graph_vertices_true))
 
 ```
+
+
+
+# Try to add alligator word to graph
+```{r}
+GRAPH_OBJECT[] # See adj matrix before starting
+
+# add add vertice and edges to list
+GRAPH_OBJECT_2 <- GRAPH_OBJECT + 
+    word_to_find_edges_for + #insert vertice without edges
+    edges(edge_list) #add edges from vertice to other vertices
+    
+GRAPH_OBJECT_2[]
+
+centralization.betweenness(graph = GRAPH_OBJECT_2,directed = FALSE)
+```
+
+
+
+
+
 
 
 

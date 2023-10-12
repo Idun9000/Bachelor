@@ -1,0 +1,39 @@
+---
+title: "Creating_Networks_From_Functions"
+author: "Laurits Lyngbæk"
+date: "2023-10-10"
+output: html_document
+---
+# SETUP
+## LOAD PACKAGES
+```{r}
+### install.packages("pacman")
+pacman::p_load(tidyverse, igraph, purrr)
+```
+
+## Load files into into the environment
+All files need to be either the child data or a cleaned adjacency matrix:
+```{r}
+# Load the child data 
+Child_Data <- read_csv(file = "../Data/75kidsubset.csv") %>% #Subset of data for quick functions
+    arrange(item_definition) %>% # sorter dataen
+    arrange(child_id) %>% 
+    arrange(age)
+
+# Load semantics df
+test_read <- read.delim(file = "../Data/Cleaned/SEMANTIC_EDGES_MATRIX.txt", sep = ",")
+
+# Load phonetic distance df
+phonetics_csv <- read_csv(file = "../Data/Cleaned/phonetic_distance_normalized.csv")
+## Make a matrix and save rownames
+ADJ_MATRIX_PHONETICS <- as.matrix(phonetics_csv[,-1])
+rownames(ADJ_MATRIX_PHONETICS) <- phonetics_csv$...1
+
+# Clean up environment
+rm(phonetics_csv, semantics_csv)
+```
+
+
+
+
+
