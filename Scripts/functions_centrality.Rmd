@@ -5,7 +5,7 @@ date: "2023-10-10"
 output: html_document
 ---
 # SETUP
-## LOAD PACKAGES
+## Load packages
 ```{r}
 ### install.packages("pacman")
 pacman::p_load(tidyverse, igraph, purrr)
@@ -15,25 +15,194 @@ pacman::p_load(tidyverse, igraph, purrr)
 All files need to be either the child data or a cleaned adjacency matrix:
 ```{r}
 # Load the child data 
-Child_Data <- read_csv(file = "../Data/75kidsubset.csv") %>% #Subset of data for quick functions
+Child_Dataframe <- read_csv(file = "../Data/75kidsubset.csv") %>% #Subset of data for quick functions
     arrange(item_definition) %>% # sorter dataen
     arrange(child_id) %>% 
     arrange(age)
 
 # Load semantics df
-test_read <- read.delim(file = "../Data/Cleaned/SEMANTIC_EDGES_MATRIX.txt", sep = ",")
+SEMANTIC_EDGES_MATRIX <- as.matrix(read.delim(file = "../Data/Cleaned/SEMANTIC_EDGES_MATRIX.txt", sep = ","))
 
 # Load phonetic distance df
-phonetics_csv <- read_csv(file = "../Data/Cleaned/phonetic_distance_normalized.csv")
-## Make a matrix and save rownames
-ADJ_MATRIX_PHONETICS <- as.matrix(phonetics_csv[,-1])
-rownames(ADJ_MATRIX_PHONETICS) <- phonetics_csv$...1
+PHONETIC_EDGES_MATRIX <- as.matrix(read.delim(file = "../Data/Cleaned/PHONETIC_EDGES_MATRIX.txt", sep = ","))
 
-# Clean up environment
-rm(phonetics_csv, semantics_csv)
+```
+
+
+
+# Define Functions
+
+## Create a functions that subsets a child_id at time one or two
+```{r}
+FUNC_Subset <- function(dataframe, column_name, true_value){
+    #' This functions returns a subset of the data frame, where the column_name == name_id
+    filtered_df <- subset(dataframe, dataframe[, column_name] == true_value)
+    return(filtered_df)
+}
+
+FUNC_Subset_first_unique <- function(dataframe, column_name){
+    #' Arrange a dataframe
+    dataframe <- arrange(dataframe, {{column_name}})
+    unique_timepoints <- unique(dataframe[[column_name]])
+    filtered_df <- subset(dataframe, dataframe[, column_name] == unique_timepoints[1])
+    return(filtered_df)
+}
+
+FUNC_Subset_second_unique <- function(dataframe, column_name){
+    #' Arrange a dataframe
+    dataframe <- arrange(dataframe, {{column_name}})
+    unique_timepoints <- unique(dataframe[[column_name]])
+    filtered_df <- subset(dataframe, dataframe[, column_name] == unique_timepoints[2])
+    return(filtered_df)
+}
+
+
+FUNC_Subset_child_at_first_unique_age <- function(dataframe, ID_collumn_name, ID_String, Age_collumn_name){
+    # Make a unique local subset for this child
+    subset <- FUNC_Subset(dataframe = dataframe,
+            column_name = ID_collumn_name, 
+            true_value = ID_String)
+    # Subset the first unique age
+    subset <- FUNC_Subset_first_unique(
+        dataframe = subset,
+        column_name = Age_collumn_name)
+    return(subset)
+}
+
+FUNC_Subset_child_at_second_unique_age <- function(dataframe, ID_collumn_name, ID_String, Age_collumn_name){
+    # Make a unique local subset for this child
+    subset <- FUNC_Subset(dataframe = dataframe,
+            column_name = ID_collumn_name,
+            true_value = ID_String)
+    # Subset the first unique age
+    subset <- FUNC_Subset_second_unique(
+        dataframe = subset,
+        column_name = Age_collumn_name)
+    return(subset)
+}
+
+
+# # END RESULTS
+# FUNC_Subset_child_at_first_unique_age(Child_Dataframe, ID_collumn_name, Child_ID, Age_collumn_name)
+# FUNC_Subset_child_at_second_unique_age(Child_Dataframe, ID_collumn_name, Child_ID, Age_collumn_name)
+```
+
+## Create a function that returns a list of unique names
+```{r}
+FUNC_Get_List_Of_Unique_Child_ID <- function(dataframe, ID_collumn_name){
+    Unique_IDs <- unique(dataframe[[ID_collumn_name]])
+    return(Unique_IDs)}
 ```
 
 
 
 
+## Create a function that defines a adjacency matrix of words known for a unique child at unique timepoint
+```{r}
+
+FUNC_Get_known_words_matrix <- function(Subset_dataframe, Is_word_know_collumn_name, Word_string_collumn_name){
+    #' This function returns a adjacency matrix, where 1 indicates the child knows both words.
+    # Define child as two string
+    KNOWN_WORDS_NUMERIC <- Subset_dataframe[[Is_word_know_collumn_name]] 
+    KNOWN_WORDS_STRING <-  Subset_dataframe[[Word_string_collumn_name]]
+ 
+    # Create adjacency matrix
+    KNOWN_WORDS_IDENTIFICATION_MATRIX <- matrix(abs(outer(KNOWN_WORDS_NUMERIC, KNOWN_WORDS_NUMERIC, FUN = "*")), # Create values for matrix
+                           nrow = length(KNOWN_WORDS_STRING), ncol = length(KNOWN_WORDS_STRING), # Define size of matrix
+                           dimnames = list(KNOWN_WORDS_STRING, KNOWN_WORDS_STRING)) #Give names to dimensions
+
+    # Remove edges between words that are connected to themselves 
+    ID_MATRIX <- diag(length(KNOWN_WORDS_IDENTIFICATION_MATRIX[1,])) # Create a identity matrix of length(adjaceny_matrix)
+    REMOVE_SELF_EDGES <- KNOWN_WORDS_IDENTIFICATION_MATRIX*ID_MATRIX # Create a matrix that has a 1 if the word triggers an edge with itself.
+    KNOWN_WORDS_IDENTIFICATION_MATRIX <- KNOWN_WORDS_IDENTIFICATION_MATRIX - REMOVE_SELF_EDGES # Remove self edges from known words matrix
+    
+    return(KNOWN_WORDS_IDENTIFICATION_MATRIX)   
+}
+```
+
+
+
+
+# Use Known_words_matrix to create a personalized ADJ_MATRIX for a linguistic adj matrix 
+```{r}
+FUNC_Personalised_ling_adj_matrix <- function(Personalized_Matrix, Linguistic_Matrix){
+    #' This function takes two equally sized matrix' and multiplies them, this results in only edges between words known to the child being saved.
+    Personalized_Linguistic_Matrix <- Personalized_Matrix * Linguistic_Matrix
+    return(Personalized_Linguistic_Matrix)}
+
+
+FUNC_Create_a_Graph_And_Remove_unknown_words <- function(Subset_dataframe,
+                                                         Personalized_Adj_Linguistic_Matrix,
+                                                         Is_word_know_collumn_name, 
+                                                         Word_string_collumn_name){
+    #' Requires IGRAPH package
+    GRAPH_OBJECT <- graph_from_adjacency_matrix(Personalized_Adj_Linguistic_Matrix, mode = "undirected")
+    NAMES_TO_REMOVE <- FUNC_Subset(dataframe = Subset_dataframe,
+                column_name = Is_word_know_collumn_name,
+                true_value = 0)
+    NAMES_TO_REMOVE <- NAMES_TO_REMOVE[[Word_string_collumn_name]]
+    VERTICES_TO_REMOVE <- which(V(GRAPH_OBJECT)$name %in% NAMES_TO_REMOVE)
+    GRAPH_OBJECT <-  delete.vertices(GRAPH_OBJECT, VERTICES_TO_REMOVE)
+    return(GRAPH_OBJECT)
+}
+```
+
+
+
+
+# Run Functions
+## Set variables
+```{r}
+Edge_Matrix_ID <- SEMANTIC_EDGES_MATRIX # The adjacency edge matrix that is inputed in functions
+Child_Dataframe <-  Child_Dataframe # The dataset that contains all information regarding the children
+ID_collumn_name <- "child_id"
+Age_collumn_name <- "age"
+Unique_Children <- FUNC_Get_List_Of_Unique_Child_ID(Child_Dataframe, ID_collumn_name)
+Child_ID <- Unique_Children[6]
+Is_word_known_collumn_name = "value"
+Word_string_collumn_name = "item_definition"
+
+```
+
+
+## Execution Block
+
+```{r}
+# Run for one child, find subset
+
+
+child_1414_1<- FUNC_Subset_child_at_first_unique_age(
+    dataframe = Child_Dataframe,
+    ID_collumn_name = ID_collumn_name,
+    ID_String =  Child_ID,
+    Age_collumn_name =  Age_collumn_name)
+
+# Make adj matrix
+Personalized_Adj_Matrix <- FUNC_Get_known_words_matrix(
+    Subset_dataframe = child_1414_1,
+    Is_word_know_collumn_name =  Is_word_known_collumn_name,
+    Word_string_collumn_name = Word_string_collumn_name)
+
+# Get semantic adj matrix
+Personalized_Adj_Linguistic_Matrix <- 
+    FUNC_Personalised_ling_adj_matrix(
+    Personalized_Matrix = Personalized_Adj_Matrix,
+    Linguistic_Matrix = SEMANTIC_EDGES_MATRIX)
+
+
+```
+
+
+# Create a GRAPH
+```{r}
+GRAPH<- FUNC_Create_a_Graph_And_Remove_unknown_words(
+    Subset_dataframe = child_1414_1,
+    Personalized_Adj_Linguistic_Matrix = Personalized_Adj_Linguistic_Matrix, 
+    Is_word_know_collumn_name = Is_word_known_collumn_name,
+    Word_string_collumn_name =  Word_string_collumn_name)
+
+
+
+
+```
 

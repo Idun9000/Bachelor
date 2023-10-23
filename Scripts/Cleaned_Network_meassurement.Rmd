@@ -102,7 +102,7 @@ KNOWN_WORDS_IDENTIFICATION_MATRIX <- KNOWN_WORDS_IDENTIFICATION_MATRIX - REMOVE_
 
 
 
-### Multiply known_words_martrix with semantics_edges_matrix and divide with / 2
+### Multiply known_words_martrix with semantics_edges_matrix
 ```{r}
 CHILD_N_SEMATNIC_EDGES_AT_TIME_N <- SEMANTIC_EDGES_MATRIX * KNOWN_WORDS_IDENTIFICATION_MATRIX
 
