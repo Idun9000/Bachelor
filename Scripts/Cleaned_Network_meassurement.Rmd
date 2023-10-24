@@ -88,6 +88,7 @@ KNOWN_WORDS_NUMERIC <- filtered_Words_for_child$value
 KNOWN_WORDS_STRING <-  filtered_Words_for_child$item_definition
 
 
+
 # Create adjacency matrix
 KNOWN_WORDS_IDENTIFICATION_MATRIX <- matrix(abs(outer(KNOWN_WORDS_NUMERIC, KNOWN_WORDS_NUMERIC, FUN = "*")), # Create values for matrix
                            nrow = length(KNOWN_WORDS_STRING), ncol = length(KNOWN_WORDS_STRING), # Define size of matrix
@@ -137,6 +138,7 @@ centralization.closeness(GRAPH_OBJECT)
 
 ## Try and save the graph for all words in a vector
 ```{r}
+
 nested_graph <- list(GRAPH_OBJECT) # Wrap list to allow for rep
 list_of_graphs <- rep(nested_graph,618) # Repeat list 618 times
 names(list_of_graphs) <-  KNOWN_WORDS_STRING # Name the graphs
@@ -160,7 +162,6 @@ verticies_in_graph <- V(GRAPH_OBJECT)$name
 
 
 edges_to_graph_vertices <- edges_for_word[names(edges_for_word) %in% verticies_in_graph]
-
 edges_to_graph_vertices_true <- names(edges_to_graph_vertices[which(edges_to_graph_vertices==1)])
 
 edge_list <- c(#Make df into a string again
