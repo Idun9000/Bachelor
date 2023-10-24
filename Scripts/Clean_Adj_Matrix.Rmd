@@ -19,7 +19,15 @@ pacman::p_load(tidyverse)
 semantics_csv <- read_csv(file = "../Data/semantic_distances.csv")
 ## This matrix has row names as a column
 ADJ_MATRIX_SEMANTICS <- as.matrix(semantics_csv[,-1]) # Save a copy without the name-column
-rownames(ADJ_MATRIX_SEMANTICS) <- semantics_csv$...1 # Set the row names of the copied matrix as the name-column from the original matrix
+
+### CHANGE BREAK TO BREAKS ###
+word_vector <- semantics_csv$...1
+#Remove words that breaks igraph
+# word_vector[75] <- "breaks" #was break
+# word_vector[166] <- "dont" #was don't
+colnames(ADJ_MATRIX_SEMANTICS) <- word_vector
+rownames(ADJ_MATRIX_SEMANTICS) <- word_vector # Set the row names of the copied matrix as the name-column from the original matrix
+
 ```
 
 ## Find mean of 3rd quantile for numbers in semantics matrix
@@ -70,16 +78,17 @@ write.table(SEMANTIC_EDGES_MATRIX, '../Data/Cleaned/SEMANTIC_EDGES_MATRIX.txt', 
 
 
 # Create phonological matrix
-## Load phonetics
+## Load Semantics
 ```{r}
 # Load semantics df
 phonetic_distance <- read_csv(file = "../Data/phonetic_distance.csv")
 ## This matrix has row names as a column
 ADJ_PHONETIC_DISTANCE <- as.matrix(phonetic_distance[,-1]) # Save a copy without the name-column
-rownames(ADJ_PHONETIC_DISTANCE) <- phonetic_distance$...1 # Set the row names of the copied matrix as the name-column from the original matrix
+colnames(ADJ_PHONETIC_DISTANCE) <- word_vector #Remove break from matrix
+rownames(ADJ_PHONETIC_DISTANCE) <- word_vector # Set the row names of the copied matrix as the name-column from the original matrix
 ```
 
-## Find mean of 3rd quantile for numbers in phonological matrix
+## Find mean of 3rd quantile for numbers in semantics matrix
 ```{r}
 
 # Create a summary of adj matrix and split strings so we can filter for statistic and get the number
@@ -99,7 +108,7 @@ hist(x = q1_phonetics$Summary_Number, main = title(paste("The mean 1st quantile 
 rm(Summary_of_semantics, q3_semantics, Summary_of_semantics) # Clean up environment
 ```
 
-### Create a adj matrix of phonological edges
+### Create a adj matrix of semantic edges
 ```{r}
 # Create matrix edges
 PHONETIC_EDGES_MATRIX <- ifelse(ADJ_PHONETIC_DISTANCE<=2,yes = 1,no = 0)
