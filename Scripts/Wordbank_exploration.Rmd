@@ -103,18 +103,18 @@ print(data_usa$value)
 length(unique(data_usa$item_definition))
 #618 words
 
-length(unique(subsetdata_usa$item_definition))
+#length(unique(subsetdata_usa$item_definition))
 #618 words
 
 #creating a list of words
-child1_words <- as.list(child1_16$item_definition)
+#child1_words <- as.list(child1_16$item_definition)
 
-length(child1_words) #list is 630 hmm (should be 618)
+#length(child1_words) #list is 630 hmm (should be 618)
 
 #looking for duplicates
-sum(duplicated(child1_words)) #12 duplicates
+#sum(duplicated(child1_words)) #12 duplicates
 
-duplicated(child1_words) #we figure out that there are two inputs for some words (eg chicken with category = animal and chicken with category = food)
+#duplicated(child1_words) #we figure out that there are two inputs for some words (eg chicken with category = animal and chicken with category = food)
 
 ```
 
@@ -143,6 +143,7 @@ subsetdata_usa <- data_usa %>%
 
 # Save subset as csv for import in other files
 write.csv(subsetdata_usa, file = "../Data/75kidsubset.csv")
+write.csv(data_usa, file = "../Data/Cleaned_USA.csv")
 
 ```
 
