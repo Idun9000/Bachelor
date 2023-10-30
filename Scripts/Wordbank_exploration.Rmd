@@ -121,11 +121,11 @@ length(unique(data_usa$item_definition))
 ### Removing duplicate items
 ```{r}
 
-child1_16 %>% 
-    group_by(item_definition) %>% 
-    filter(n() > 1) %>% 
-    ungroup %>% 
-    arrange(item_definition)
+# child1_16 %>% 
+#     group_by(item_definition) %>% 
+#     filter(n() > 1) %>% 
+#     ungroup %>% 
+#     arrange(item_definition)
 
 items_to_remove = c(220, 23, 412, 421, 424, 30, 129, 477, 486, 260, 154, 502)
 
