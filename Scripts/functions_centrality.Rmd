@@ -14,6 +14,21 @@ pacman::p_load(tidyverse, igraph, purrr)
 ## Load files into into the environment
 All files need to be either the child data or a cleaned adjacency matrix:
 ```{r}
+<<<<<<< HEAD
+# # Load the child data 
+# Child_Dataframe <- read_csv(file = "../Data/Cleaned_USA.csv") %>% #Subset of data for quick functions
+#     arrange(item_definition) %>% # sorter dataen
+#     arrange(child_id) %>% 
+#     arrange(age) %>% 
+#     distinct(child_id, age,item_definition, .keep_all = TRUE) #Make sure all children are 618 length matrix, by removing duplicates
+
+# Alternative SUBSET VERSION
+Child_Dataframe_subset <- read_csv(file = "../Data/75kidsubset.csv") %>% #Subset of data for quick functions
+    arrange(item_definition) %>% # sorter dataen
+    arrange(child_id) %>%
+    arrange(age) %>% 
+    distinct(child_id, age,item_definition, .keep_all = TRUE) #Make sure all children are 618 length matrix, by removing duplicates
+=======
 # Load the child data 
 Child_Dataframe <- read_csv(file = "../Data/75kidsubset.csv") %>% #Subset of data for quick functions
     arrange(item_definition) %>% # sorter dataen
@@ -23,6 +38,7 @@ Child_Dataframe <- read_csv(file = "../Data/75kidsubset.csv") %>% #Subset of dat
     # mutate(item_definition = ifelse(item_definition == "break", "breaks", item_definition))%>% 
     # mutate(item_definition = ifelse(item_definition == "don't", "dont", item_definition))
 
+>>>>>>> parent of c82a452 (Able to get centrality out for all children in subset, trying to generalize to all data)
 # Load semantics df
 SEMANTIC_EDGES_MATRIX <- as.matrix(read.delim(file = "../Data/Cleaned/SEMANTIC_EDGES_MATRIX.txt", sep = ","))
 
@@ -31,10 +47,7 @@ PHONETIC_EDGES_MATRIX <- as.matrix(read.delim(file = "../Data/Cleaned/PHONETIC_E
 
 ```
 
-
-
 # Define Functions
-
 ## Create a functions that subsets a child_id at time one or two
 ```{r}
 FUNC_Subset <- function(dataframe, column_name, true_value){
@@ -96,9 +109,6 @@ FUNC_Get_List_Of_Unique_Child_ID <- function(dataframe, ID_collumn_name){
     Unique_IDs <- unique(dataframe[[ID_collumn_name]])
     return(Unique_IDs)}
 ```
-
-
-
 
 
 ## Create a function that defines a adjacency matrix of words known for a unique child at unique timepoint
@@ -195,17 +205,38 @@ FUNC_Add_new_word_to_graph <- function(GRAPH_OBJECT, NEW_WORD_STRING, ADJ_MATRIX
     }
     
     return(GRAPH_OBJECT)
+<<<<<<< HEAD
+}
+
+
+## NESTED VERSION
+# Return_list_of_updated <- imap(List_of_List_of_Graphs[[1]], FUNC_nested_add_word_to_graph_for_imap, MATRIX = SEMANTIC_EDGES_MATRIX)
+FUNC_nested_add_word_to_graph_for_imap <- function(igraph_object, index, MATRIX) {
+    global_counter <<- global_counter + 1
+    cat("Global Counter:", global_counter)
+    #' Add the new word to the igraph
+    igraph_object <- FUNC_Add_new_word_to_graph(
+        GRAPH_OBJECT = igraph_object,
+        NEW_WORD_STRING = index,
+        ADJ_MATRIX = MATRIX)
+    return(igraph_object)  # You can return the modified graph or any other result
+}
+
+=======
     }
+>>>>>>> parent of c82a452 (Able to get centrality out for all children in subset, trying to generalize to all data)
 ```
-
-
-
 
 # Run Functions
 ## Set variables
 ```{r}
+<<<<<<< HEAD
+EDGE_MATRIX_ID <- SEMANTIC_EDGES_MATRIX # The adjacency edge matrix that is inputed in functions
+Child_Dataframe <-  Child_Dataframe_subset # The dataset that contains all information regarding the children
+=======
 Edge_Matrix_ID <- SEMANTIC_EDGES_MATRIX # The adjacency edge matrix that is inputed in functions
 Child_Dataframe <-  Child_Dataframe # The dataset that contains all information regarding the children
+>>>>>>> parent of c82a452 (Able to get centrality out for all children in subset, trying to generalize to all data)
 ID_collumn_name <- "child_id"
 Age_collumn_name <- "age"
 Unique_Children <- FUNC_Get_List_Of_Unique_Child_ID(Child_Dataframe, ID_collumn_name)
@@ -218,7 +249,6 @@ KNOWN_WORDS_NUMERIC <- unique(Child_Dataframe[[Word_numeric_column_name]])
 KNOWN_WORDS_STRING <-  unique(Child_Dataframe[[Word_string_collumn_name]]) 
 KNOWN_WORDS_STRING[75] <- "breaks"
 ```
-
 
 ## Execution Block
 ```{r}
@@ -235,27 +265,81 @@ Personalized_Adj_Matrix <- FUNC_Get_known_words_matrix(
     Is_word_know_collumn_name =  Is_word_known_collumn_name,
     Word_string_collumn_name = Word_string_collumn_name)
 
+<<<<<<< HEAD
+
+# Make a list of subsets (3.91 seconds as subset -> 38.8 seconds at full dataset)
+start_time <- Sys.time()
+List_of_subsets <- purrr::map(.x =  List_of_subsets, 
+                       .f = FUNC_Subset_child_at_first_unique_age,
+                       dataframe = Child_Dataframe,
+                       ID_collumn_name = ID_collumn_name,
+                       Age_collumn_name = Age_collumn_name,
+                       ID_String = ) #Nothing defined here to show that the map .x map value is used
+end_time <- Sys.time()
+end_time - start_time
+
+start_time <- Sys.time()
+# Make adj matrix' (0.80 seconds at subset -> 8.02 seconds at full dataset)
+List_of_personalized_adj_matrix <- purrr::map(.x = List_of_subsets,
+                                       .f = FUNC_Get_known_words_matrix,
+                                       Subset_dataframe = , #left empty to show .x map value
+                                       Is_word_know_collumn_name =  Is_word_known_collumn_name,
+                                       Word_string_collumn_name = Word_string_collumn_name)
+end_time <- Sys.time()
+end_time - start_time
+
+# Convert the personalized matrix to a lingisicually corrected matrix (0.223 seconds)
+List_of_personalized_adj_matrix <- purrr::map(
+    .x = List_of_personalized_adj_matrix, 
+    .f = FUNC_Personalised_ling_adj_matrix,
+    Personalized_Matrix = ,#left empty to show .x map value
+    Linguistic_Matrix = EDGE_MATRIX_ID)
+
+    
+=======
 # Get semantic adj matrix
 Personalized_Adj_Linguistic_Matrix <- 
     FUNC_Personalised_ling_adj_matrix(
     Personalized_Matrix = Personalized_Adj_Matrix,
     Linguistic_Matrix = SEMANTIC_EDGES_MATRIX)
+>>>>>>> parent of c82a452 (Able to get centrality out for all children in subset, trying to generalize to all data)
 ```
 
 
 ## Create a GRAPH
 ```{r}
+<<<<<<< HEAD
+# Using a parralel map to make a graph and remove words from the two matrix (2.35 seconds -> 18.65)
+start_time <- Sys.time()
+List_of_graphs <- purrr::map2(.x = List_of_subsets, 
+                       .y = List_of_personalized_adj_matrix,
+                       .f = FUNC_Create_a_Graph_And_Remove_unknown_words,
+                       Is_word_know_collumn_name = Is_word_known_collumn_name,
+                       Word_string_collumn_name =  Word_string_collumn_name,
+                       Subset_dataframe = , #This is where .x parameter goes
+                       Personalized_Adj_Linguistic_Matrix = )#This is where .y parameter goes
+end_time <- Sys.time()
+end_time - start_time
+=======
 GRAPH <- FUNC_Create_a_Graph_And_Remove_unknown_words(
     Subset_dataframe = child_1414_1,
     Personalized_Adj_Linguistic_Matrix = Personalized_Adj_Linguistic_Matrix, 
     Is_word_know_collumn_name = Is_word_known_collumn_name,
     Word_string_collumn_name =  Word_string_collumn_name)
+>>>>>>> parent of c82a452 (Able to get centrality out for all children in subset, trying to generalize to all data)
 ```
 
 ## Make a list graphs
 ```{r}
+<<<<<<< HEAD
+# (0.03 seconds)
+List_of_List_of_graphs <- purrr::map(.x = List_of_graphs,
+            .f = FUNC_Tranform_graph_to_list_of_graphs,
+    GRAPH_OBJECT = ,#This is where .x parameter goes
+=======
 List_of_Graphs <- FUNC_Tranform_graph_to_list_of_graphs(
     GRAPH_OBJECT = GRAPH,
+>>>>>>> parent of c82a452 (Able to get centrality out for all children in subset, trying to generalize to all data)
     KNOWN_WORDS_STRING = KNOWN_WORDS_STRING)
 
 List_of_List_of_Graphs <- FUNC_Tranform_graph_to_list_of_graphs(
@@ -266,6 +350,45 @@ List_of_List_of_Graphs <- FUNC_Tranform_graph_to_list_of_graphs(
 
 
 ```{r}
+<<<<<<< HEAD
+global_counter <- 0
+start_time <- Sys.time()
+# Make a nested function with a map function inside: (63.5 seconds (2.6 mins if prins counter) ->  1.07352 hours (388104 runs of function))
+List_of_List_of_graphs <- purrr::map(List_of_List_of_graphs, function(inner_list) {
+    imap(inner_list, FUNC_nested_add_word_to_graph_for_imap, MATRIX = EDGE_MATRIX_ID)
+})
+
+end_time <- Sys.time()
+end_time - start_time
+# #Save this list
+# saveRDS(List_of_List_of_graphs, file = "../Data/Subset_list_of_semantic_graphs")
+# List_of_List_of_graphs <- readRDS("../Data/Subset_list_of_semantic_graphs")
+```
+
+# Get centrality from graphs
+```{r}
+start_time <- Sys.time()
+# 20.3 seconds -> 23 mins
+List_of_centrality <-  purrr::map(List_of_List_of_graphs, function(inner_list) {
+    imap(inner_list, function(graph_object, index){
+        eigen_centrality(graph_object, directed = FALSE)$vector[index]
+    })
+})
+end_time <- Sys.time()
+end_time - start_time
+```
+# Transform into dataframe:
+```{r}
+start_time <- Sys.time()
+#(0.05 seconds)
+DF_Centrality <- rrapply::rrapply(List_of_centrality, how = "melt") %>% 
+    rename(Child_ID = L1,
+           item_definition = L2) %>% 
+    mutate(timepoint = timepoint,
+           value = format(value, scientific = FALSE))
+end_time <- Sys.time()
+end_time - start_time
+=======
 names(List_of_Graphs)[613]
 List_of_Graphs[[613]]
 
@@ -280,6 +403,7 @@ names(List_of_List_of_Graphs[[1]])[1]
 
 
 
+>>>>>>> parent of c82a452 (Able to get centrality out for all children in subset, trying to generalize to all data)
 ```
 
 
