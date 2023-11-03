@@ -255,7 +255,7 @@ FUNC_nested_add_word_to_graph_for_imap <- function(igraph_object, index, MATRIX)
 # Run Functions
 ## Set variables
 ```{r}
-Child_Dataframe <-  Child_Dataframe_subset # The dataset that contains all information regarding the children, CURRENTLY subset.
+Child_Dataframe <-  Child_Dataframe # The dataset that contains all information regarding the children, CURRENTLY subset.
 ID_collumn_name <- "child_id"
 Age_collumn_name <- "age"
 Word_string_collumn_name = "item_definition"
