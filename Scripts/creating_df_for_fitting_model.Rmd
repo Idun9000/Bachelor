@@ -74,14 +74,34 @@ Timepoint_data <- Centrality_DF %>%
 
 Centrality_DF <- merge(x = Centrality_DF, y = Timepoint_data, by = c("Child_ID", "age"))
 
-#' Save age as ordered factor
+
+
+
+
+#' Save age and caregiver_education as ordered factor
+education_levels<- c("Some Secondary", "Secondary", "Some College", "College", "Some Graduate", "Graduate")
 Centrality_DF <- Centrality_DF %>% 
     mutate(age = factor(age,
                         ordered = TRUE, 
-                        levels = sort(unique(age))))
+                        levels = sort(unique(age))),
+           caregiver_education = factor(caregiver_education,
+                                        ordered = TRUE,
+                                        levels = education_levels))
+
+
+Centrality_DF <- Centrality_DF %>% 
+    filter(Timepoint == 1 | Timepoint == 2)
+
+subset_df <- Centrality_DF %>% 
+    subset(subset = Timepoint == 1 & Knows_Word == 1)
+
 
 ```
 
+
+```{r}
+write_csv(x = Centrality_DF,file = "../Data/Cleaned/CENTRALITY_DF.csv")
+```
 
 
 
