@@ -1,0 +1,101 @@
+---
+title: "Merge DFs"
+author: "Laurits & Idun"
+date: "2023-11-06"
+output: html_document
+---
+
+```{r}
+pacman::p_load(tidyverse)
+```
+
+
+```{r}
+metadata <- read_csv(file = "../Data/Cleaned_USA.csv", )
+semantics <- read_csv(file = "../Data/Lexcial_information/SEMANTIC_time_1.csv")
+phonological <- read_csv(file = "../Data/Lexcial_information/PHONETIC_time_1.csv")
+word_length <- read_csv(file = "../Data/Lexcial_information/WORD_LENGTH_time_1.csv")
+
+```
+
+# Rename value
+```{r}
+semantics <- semantics %>% 
+    rename(Semantic_centrality = value) %>% 
+    select(Child_ID,
+           item_definition,
+           Semantic_centrality)
+
+phonological <- phonological %>% 
+    rename(Phonological_centrality = value) %>% 
+    select(Child_ID, 
+           item_definition, 
+           Phonological_centrality)
+
+word_length <- word_length %>% 
+    rename(Word_length_centrality = value) %>% 
+    select(Child_ID, 
+           item_definition, 
+           Word_length_centrality)
+
+metadata <- metadata %>% 
+    rename(Child_ID = child_id,
+           Knows_Word = value) %>% 
+    select(Child_ID, 
+           age, 
+           item_definition, 
+           Knows_Word,birth_order, 
+           caregiver_education, 
+           sex)
+
+
+
+```
+
+# Merge that shit
+```{r}
+Centrality_DF <- merge(x = semantics, y = phonological, by = c("Child_ID", "item_definition"))
+Centrality_DF <- merge(x = Centrality_DF, y = word_length, by = c("Child_ID", "item_definition"))
+Centrality_DF <- merge(x = Centrality_DF, y = metadata, by = c("Child_ID", "item_definition"))
+
+
+rm(phonological, semantics, word_length)
+```
+
+
+# Adding time point column 
+
+```{r}
+Timepoint_data <- Centrality_DF %>% 
+    group_by(Child_ID) %>% 
+    distinct(age)%>%
+    arrange(Child_ID, age)%>%
+    mutate(Timepoint = rank(age))
+
+Centrality_DF <- merge(x = Centrality_DF, y = Timepoint_data, by = c("Child_ID", "age"))
+
+#' Save age as ordered factor
+Centrality_DF <- Centrality_DF %>% 
+    mutate(age = factor(age,
+                        ordered = TRUE, 
+                        levels = sort(unique(age))))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
