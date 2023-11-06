@@ -64,7 +64,6 @@ rm(phonological, semantics, word_length)
 
 
 # Adding time point column 
-
 ```{r}
 Timepoint_data <- Centrality_DF %>% 
     group_by(Child_ID) %>% 
@@ -87,14 +86,43 @@ Centrality_DF <- Centrality_DF %>%
            caregiver_education = factor(caregiver_education,
                                         ordered = TRUE,
                                         levels = education_levels))
+```
 
-
+# Simplyfying the data by assuming that all words learned at t1 will also be learned at t2 (even though there are exceptions)
+```{r}
+#Only interested in t1 and t2 for now
 Centrality_DF <- Centrality_DF %>% 
     filter(Timepoint == 1 | Timepoint == 2)
 
-subset_df <- Centrality_DF %>% 
-    subset(subset = Timepoint == 1 & Knows_Word == 1)
+# First, create a data frame of known words at timepoint 1
+known_at_timepoint_1 <- Centrality_DF %>%
+  filter(Timepoint == 1 & Knows_Word == 1) %>%
+  select(Child_ID, item_definition) # Keep only the necessary columns
 
+# Making sure there are no duplicates
+known_at_timepoint_1 <- known_at_timepoint_1 %>%
+  distinct(Child_ID, item_definition, .keep_all = TRUE)
+
+# Create a data frame of known words at timepoint 2
+known_at_timepoint_2 <- Centrality_DF %>%
+  filter(Timepoint == 2 & Knows_Word == 1) %>%
+  select(Child_ID, item_definition) # Keep only the necessary columns
+
+# Making sure there are no duplicates
+known_at_timepoint_2 <- known_at_timepoint_2 %>%
+  distinct(Child_ID, item_definition, .keep_all = TRUE)
+
+# Figuring out which words are known at t1 but not at t2 so we can check if it works later on
+words_known_at_1_not_at_2 <- anti_join(known_at_timepoint_1, known_at_timepoint_2, 
+                                       by = c("Child_ID", "item_definition"))
+
+# Overwriting t2 to knows_word = 1 when word is known at t1 
+Centrality_DF <- Centrality_DF %>% 
+  left_join(known_at_timepoint_1 %>% 
+              select(Child_ID, item_definition) %>% 
+              mutate(Knows_Word_at_2 = 1), by = c("Child_ID", "item_definition")) %>%
+  mutate(Knows_Word = ifelse(Timepoint == 2 & !is.na(Knows_Word_at_2), 1, Knows_Word)) %>%
+  select(-Knows_Word_at_2) # Removing the helper column
 
 ```
 
