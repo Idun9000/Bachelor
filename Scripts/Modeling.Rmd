@@ -1,0 +1,88 @@
+---
+title: "Model"
+author: "Tilde Sloth"
+date: "2023-11-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+pacman::p_load(tidyverse, brms)
+```
+
+# Loading data
+```{r}
+Centrality_DF <- read_csv("../Data/Cleaned/CENTRALITY_DF.csv")
+```
+
+# Changing age and education level to ordered factors
+```{r}
+#' Save age and caregiver_education as ordered factor
+education_levels<- c("Some Secondary", "Secondary", "Some College", "College", "Some Graduate", "Graduate")
+Centrality_DF <- Centrality_DF %>% 
+    mutate(age = factor(age,
+                        ordered = TRUE, 
+                        levels = sort(unique(age))),
+           caregiver_education = factor(caregiver_education,
+                                        ordered = TRUE,
+                                        levels = education_levels))
+
+# Checking ordered factors
+#str(Centrality_DF$age)
+#str(Centrality_DF$caregiver_education)
+
+```
+
+
+# Removing t1
+```{r}
+Centrality_DF_test <- Centrality_DF %>% 
+    filter(Timepoint == 2)
+```
+
+
+# Setting the formula (fixed and random effects)
+```{r}
+formula <- brms::bf(Knows_Word | trials(1) ~ 1 + Semantic_centrality + Phonological_centrality + Word_length_centrality + (1|Child_ID))
+```
+
+# Setting priors
+```{r}
+get_prior(formula, data = Centrality_DF_test)
+
+model_priors <- c(
+    prior(normal(0, 10), class = b),
+    prior(normal(0, 10), class = Intercept),
+    prior(normal(0,10), class = sd)
+)
+```
+
+# Setting model variables 
+```{r}
+cores <- 4
+chains <- 2
+seed <- 123
+```
+
+
+# Creating model
+```{r}
+Model <- brm(formula,
+             data = Centrality_DF_test,
+             family = binomial,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T, 
+             iter = 1000,
+             warmup = 500,
+             cores = cores, 
+             chains = chains,
+             seed = seed,
+             stan_model_args = list(stanc_options = list("O1"))
+             )
+
+```
+
