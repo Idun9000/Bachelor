@@ -131,6 +131,20 @@ Centrality_DF <- Centrality_DF %>%
 write_csv(x = Centrality_DF,file = "../Data/Cleaned/CENTRALITY_DF.csv")
 ```
 
+# Investigating how age is distributed
+```{r}
+
+t1 <- Centrality_DF %>% 
+    filter(Timepoint == 1) %>% 
+    mutate(age = as.numeric(age))
+
+t2 <- Centrality_DF %>% 
+    filter(Timepoint == 2) %>% 
+    mutate(age = as.numeric(age))
+
+hist(t1$age)
+hist(t2$age)
+```
 
 
 
