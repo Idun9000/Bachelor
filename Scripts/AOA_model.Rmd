@@ -17,7 +17,8 @@ pacman::p_load(tidyverse, brms)
 # Loading data
 ```{r}
 AOA_data <- read_csv("../Data/wordbank_item_data.csv")
-Centrality_DF <- read_csv("../Data/Cleaned/CENTRALITY_DF.csv")
+Centrality_t2_training <- read_csv("../Data/Centrality_t2_training.csv")
+Centrality_t2_test <-  read_csv("../Data/Centrality_t2_test.csv")
 ```
 
 
@@ -101,35 +102,39 @@ Average_age <- AOA_data %>%
 write.csv(AOA_data, file = "../Data/Cleaned_AOA.csv")
 ```
 
-# Only looking at t2 for Centrality_DF
+# Removing unimportant columns i Centrality_t2_training and Centrality_t2_test
 ```{r}
-Centrality_DF_t2 <- Centrality_DF %>% 
-    filter(Timepoint == 2)
+Centrality_t2_training <- subset(Centrality_t2_training, select = -c(Semantic_centrality, Phonological_centrality, Word_length_centrality, birth_order, caregiver_education, sex))
 
-# Remove duplicates based on all columns
-Centrality_DF_t2 <- Centrality_DF_t2 %>% distinct()
-
-#removing unimportant columns
-Centrality_DF_t2 <- subset(Centrality_DF_t2, select = -c(Semantic_centrality, Phonological_centrality, Word_length_centrality, birth_order, caregiver_education, sex))
+Centrality_t2_test <- subset(Centrality_t2_test, select = -c(Semantic_centrality, Phonological_centrality, Word_length_centrality, birth_order, caregiver_education, sex))
 
 ```
 
 
 # Merge AOA data with Centrality_DF
 ```{r}
-merged_AOA <- merge(Average_age, Centrality_DF_t2, by = "item_definition")
+merged_AOA_training <- merge(Average_age, Centrality_t2_training, by = "item_definition")
+
+merged_AOA_test <- merge(Average_age, Centrality_t2_test, by = "item_definition")
 
 #create binary variable that indicates whether the age of the child is equal to or above the average age of acquisition for that word
-merged_AOA <- merged_AOA %>% 
+merged_AOA_training <- merged_AOA_training %>% 
     mutate(Expected_to_know_from_AOA = ifelse(age >= Average_Age_of_Acquisition, 1, 0))
 
-merged_AOA <- merged_AOA %>% 
+merged_AOA_training <- merged_AOA_training %>% 
+    mutate(Expected_to_know_from_AOA = as.factor(Expected_to_know_from_AOA))
+
+merged_AOA_test <- merged_AOA_test %>% 
+    mutate(Expected_to_know_from_AOA = ifelse(age >= Average_Age_of_Acquisition, 1, 0))
+
+merged_AOA_test <- merged_AOA_test %>% 
     mutate(Expected_to_know_from_AOA = as.factor(Expected_to_know_from_AOA))
 ```
 
 
 ```{r}
-write.csv(merged_AOA, "../Data/mergedAOA.csv")
+write.csv(merged_AOA_training, "../Data/mergedAOA_training.csv")
+write.csv(merged_AOA_test, "../Data/mergedAOA_test.csv")
 ```
 
 
@@ -144,7 +149,7 @@ AOA_priors <- c(
 
 AOA_model <- brm(
     formula = formula_AOA,
-    data = merged_AOA,
+    data = merged_AOA_training,
     family = bernoulli,
     backend = "cmdstanr",
     prior = AOA_priors,
@@ -157,6 +162,28 @@ AOA_model <- brm(
     threads = threading(2),
     stan_model_args = list(stanc_options = list("O1"))
 )
+```
+
+# here we will need some kind of K-fold or LOO
+
+# Calculating simple accuracy - just for fun
+```{r}
+# Based on the yardstick package
+
+# use posterior_predict to generate predictions on the test set
+posterior_predictive <- posterior_predict(AOA_model, newdata = merged_AOA_test) # matrix where each row corresponds to a prediction for an observation in the test set, and each column corresponds to a draw from the posterior distribution of the predicted probabilities
+
+# for each observation, calculate the mean of all the draws from the posterior predictive distribution for that observation.
+merged_AOA_test$predicted_prob <- apply(posterior_predictive, 2, mean)
+
+# If the predicted probability is greater than 0.5, we predict the class as 1 (knows the word)
+merged_AOA_test$predicted_class <- ifelse(merged_AOA_test$predicted_prob > 0.5, 1, 0)
+
+# Calculate accuracy - compare predictions with actual outcome
+accuracy <- mean(merged_AOA_test$predicted_class == merged_AOA_test$Knows_Word)
+
+# Output the performance metrics
+print(paste("Accuracy:", accuracy))
 ```
 
 
