@@ -8,9 +8,9 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
+# Loading packages
 ```{r}
-pacman::p_load(tidyverse, brms)
+pacman::p_load(tidyverse, brms, rsample, yardstick)
 ```
 
 # Loading data
@@ -75,9 +75,7 @@ The predictors (x) are bounded continuous variables (between 0 and 1)
 
 The coefficient β1 represents the change in the log odds (of the outcome) for a one-unit change in the predictor x. In logistic regression, we look at the outcome in log odds, because the relationship between the predictor and the log odds of the outcome is linear
 
-The odds of an event are calculated as the probability of the event occurring divided by the probability of the event not occurring. If the probability of success is 0.75, the odds are 
-
-$$\frac{0.75}{0.25} = 3$$
+The odds of an event are calculated as the probability of the event occurring divided by the probability of the event not occurring. If the probability of success is 0.75, the odds are $$\frac{0.75}{0.25} = 3$$
 
 We can convert the log odds change to an odds ratio (which is easier to interpret), by exponentiating the coefficient: Odds Ratio= $$e^{B_1}$$
 
@@ -141,6 +139,19 @@ Hmmm okay doing the stats make me reconsider
 
 ---
 
+# Splitting the model in train and test data
+```{r}
+set.seed(123)
+
+data_split_t2 <- initial_split(Centrality_DF_t2, prop = 0.8)
+
+Centrality_t2_training <- training(data_split_t2)
+Centrality_t2_test <- testing(data_split_t2)
+
+#save
+write.csv(Centrality_t2_training, "../Data/Centrality_t2_training.csv")
+write.csv(Centrality_t2_test, "../Data/Centrality_t2_test.csv")
+```
 
 
 # Setting model variables 
@@ -153,8 +164,8 @@ seed <- 123
 
 # Creating model
 ```{r}
-Model <- brm(formula,
-             data = Centrality_DF_t2,
+Child_specific_model <- brm(formula,
+             data = Centrality_t2_training,
              family = bernoulli,
              backend = "cmdstanr",
              prior = model_priors,
@@ -172,5 +183,30 @@ Model <- brm(formula,
 # Second try: adding threads for more efficient computation + changing from binomial to bernoulli + narrowing priors (normal(0,5)) (21 minutes)
 # Third try: narrowing priors again after learning more about coefficients in logistic regression (0,3) & (0,3) and (0,2) (18 min)
 # Fourth try: setting cores with parallel:detectCores() (still 18 min but i guess it makes sense. 8 cores will not help when there are only 2 chains)
+# Fifth try: now running it on the training data (15 min)
+```
+
+# Here we should have a K-fold or LOO section
+
+# Evaluate classification model
+```{r}
+# Just for fun checking how well our model does now
+# Based on the yardstick package
+
+# use posterior_predict to generate predictions on the test set
+posterior_predictive <- posterior_predict(Child_specific_model, newdata = Centrality_t2_test) # matrix where each row corresponds to a prediction for an observation in the test set, and each column corresponds to a draw from the posterior distribution of the predicted probabilities
+
+# for each observation, calculate the mean of all the draws from the posterior predictive distribution for that observation.
+Centrality_t2_test$predicted_prob <- apply(posterior_predictive, 2, mean)
+
+# If the predicted probability is greater than 0.5, we predict the class as 1 (knows the word)
+Centrality_t2_test$predicted_class <- ifelse(Centrality_t2_test$predicted_prob > 0.5, 1, 0)
+
+# Calculate accuracy - compare predictions with actual outcome
+accuracy <- mean(Centrality_t2_test$predicted_class == Centrality_t2_test$Knows_Word)
+
+# Output the performance metrics
+print(paste("Accuracy:", accuracy))
+
 ```
 
