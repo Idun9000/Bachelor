@@ -1,0 +1,125 @@
+---
+title: "Modeling average_age_acquisition"
+author: "Tilde Sloth"
+date: "2023-11-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Loading packages      
+```{r}
+pacman::p_load(tidyverse, brms)
+```
+
+# Loading data
+```{r}
+AOA_data <- read_csv("../Data/wordbank_item_data.csv")
+Centrality_DF <- read_csv("../Data/Cleaned/CENTRALITY_DF.csv")
+```
+
+
+# Cleaning up a bit
+```{r}
+#removing words that are sounds
+AOA_data <- AOA_data %>%
+  filter(category != "sounds")
+
+#looking at the unique "more than one words"
+more_than_one_word <- AOA_data[str_detect(AOA_data$item_definition, "\\s+"), ]
+
+more_than_one_word_unique <- more_than_one_word %>% distinct(item_definition)
+
+#removing words that are two words
+AOA_data <- AOA_data %>%
+  mutate(item_definition = gsub(" \\(.*", "", item_definition)) %>%
+  filter(!grepl(" ", item_definition) | grepl(" \\(", item_definition))
+
+#remove words that end with *
+AOA_data <- AOA_data %>% 
+  # Remove the * character from words that end with it
+  mutate(item_definition = str_remove(item_definition, "\\*$"))
+
+#change words with /
+AOA_data <- AOA_data %>%
+  # Remove everything after the /
+  mutate(item_definition = str_remove_all(item_definition, "/.*"))
+```
+
+# Dealing with duplicates
+```{r}
+#unique words
+length(unique(AOA_data$item_definition)) #618
+
+list_of_words <- as.list(AOA_data$item_definition) #630
+
+AOA_data %>% 
+     group_by(item_definition) %>% 
+     filter(n() > 1) %>% 
+     ungroup %>% 
+     arrange(item_definition)
+
+# Removing the same words as in child_specific data
+items_to_remove = c(220, 23, 412, 421, 424, 30, 129, 477, 486, 260, 154, 502)
+
+for (i in items_to_remove){
+    AOA_data <- subset(AOA_data, item_id != i)
+}
+
+```
+
+# Removing unimportant columns
+```{r}
+#removing unimportant columns
+AOA_data <- subset(AOA_data, select = -c(downloaded, item_id, category))
+```
+
+# Transform the dataset from wide to long format
+```{r}
+AOA_data <- AOA_data %>%
+  pivot_longer(
+    cols = c(-item_definition, ), # This will pivot all columns except for item_definition
+    names_to = "Age_Months",
+    values_to = "Percentage_Knowing"
+  )
+```
+
+# Creating average age of acquisition column
+```{r}
+#calculate average age of acquisition
+Average_age <- AOA_data %>% 
+    group_by(item_definition) %>% 
+    summarize(Average_Age_of_Acquisition = min(Age_Months[Percentage_Knowing > 0.5], na.rm = TRUE))
+
+```
+
+
+# Save it
+```{r}
+write.csv(AOA_data, file = "../Data/Cleaned_AOA.csv")
+```
+
+# Only looking at t2 for Centrality_DF
+```{r}
+Centrality_DF_t2 <- Centrality_DF %>% 
+    filter(Timepoint == 2)
+
+# Remove duplicates based on all columns
+Centrality_DF_t2 <- Centrality_DF_t2 %>% distinct()
+
+#removing unimportant columns
+Centrality_DF_t2 <- subset(Centrality_DF_t2, select = -c(Semantic_centrality, Phonological_centrality, Word_length_centrality, birth_order, caregiver_education, sex))
+
+```
+
+
+# Merge AOA data with Centrality_DF
+```{r}
+merged_AOA <- merge(Average_age, Centrality_DF_t2, by = "item_definition")
+
+write.csv(merged_AOA, "../Data/mergedAOA.csv")
+```
+
+
