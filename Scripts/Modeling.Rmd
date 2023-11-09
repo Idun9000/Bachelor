@@ -145,7 +145,7 @@ Hmmm okay doing the stats make me reconsider
 
 # Setting model variables 
 ```{r}
-cores <- 4
+cores <- parallel::detectCores()
 chains <- 2
 seed <- 123
 ```
@@ -171,5 +171,6 @@ Model <- brm(formula,
 # First try: cores = 4, chains = 2, iter = 1000, warmup = 500, prior(normal(0,10)) (6.66 hours)
 # Second try: adding threads for more efficient computation + changing from binomial to bernoulli + narrowing priors (normal(0,5)) (21 minutes)
 # Third try: narrowing priors again after learning more about coefficients in logistic regression (0,3) & (0,3) and (0,2) (18 min)
+# Fourth try: setting cores with parallel:detectCores() (still 18 min but i guess it makes sense. 8 cores will not help when there are only 2 chains)
 ```
 

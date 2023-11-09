@@ -119,7 +119,44 @@ Centrality_DF_t2 <- subset(Centrality_DF_t2, select = -c(Semantic_centrality, Ph
 ```{r}
 merged_AOA <- merge(Average_age, Centrality_DF_t2, by = "item_definition")
 
+#create binary variable that indicates whether the age of the child is equal to or above the average age of acquisition for that word
+merged_AOA <- merged_AOA %>% 
+    mutate(Expected_to_know_from_AOA = ifelse(age >= Average_Age_of_Acquisition, 1, 0))
+
+merged_AOA <- merged_AOA %>% 
+    mutate(Expected_to_know_from_AOA = as.factor(Expected_to_know_from_AOA))
+```
+
+
+```{r}
 write.csv(merged_AOA, "../Data/mergedAOA.csv")
+```
+
+
+
+# Creating bayesian AOA model
+```{r}
+formula_AOA <- brms::bf(Knows_Word ~ Expected_to_know_from_AOA)
+
+AOA_priors <- c(
+    prior(normal(0, 10), class = b)
+)
+
+AOA_model <- brm(
+    formula = formula_AOA,
+    data = merged_AOA,
+    family = bernoulli,
+    backend = "cmdstanr",
+    prior = AOA_priors,
+    sample_prior = T, 
+    iter = 1000,
+    warmup = 500,
+    cores = parallel::detectCores(), 
+    chains = 2,
+    seed = 123,
+    threads = threading(2),
+    stan_model_args = list(stanc_options = list("O1"))
+)
 ```
 
 
