@@ -54,6 +54,8 @@ Centrality_DF_t2 <- Centrality_DF_t2 %>% distinct()
 ```{r}
 formula <- brms::bf(Knows_Word ~ 1 + Semantic_centrality + Phonological_centrality + Word_length_centrality + (1|Child_ID))
 
+formula2 <-  brms::bf(Knows_Word ~ 1 + Semantic_centrality + Phonological_centrality + Word_length_centrality + age + (1|Child_ID))
+
 #Conceptually, using trials(1) together with family = binomial is the same as using family = bernoulli. It is more straightforward to use bernoulli since it models binary outcomes with a single trial per observation. Family = binomial models outcomes with 1 or more trials per observation
 ```
 
@@ -141,12 +143,25 @@ Hmmm okay doing the stats make me reconsider
 
 # Splitting the model in train and test data
 ```{r}
+# Splitting based on child_id
 set.seed(123)
 
-data_split_t2 <- initial_split(Centrality_DF_t2, prop = 0.8)
+# Group by 'child' and then use group_split
+grouped_data <- Centrality_DF_t2 %>% group_by(Child_ID)
 
-Centrality_t2_training <- training(data_split_t2)
-Centrality_t2_test <- testing(data_split_t2)
+# Get unique groups (children)
+children <- grouped_data %>% group_keys()
+
+# Sample the groups
+train_child <- sample(children$Child_ID, size = round(nrow(children) * 0.8))
+
+# Split the data based on sampled groups
+train_data <- grouped_data %>% filter(Child_ID %in% train_child)
+test_data <- grouped_data %>% filter(!(Child_ID %in% train_child))
+
+# Ungroup and create final datasets
+Centrality_t2_training <- train_data %>% ungroup()
+Centrality_t2_test <- test_data %>% ungroup()
 
 #save
 write.csv(Centrality_t2_training, "../Data/Centrality_t2_training.csv")
@@ -186,6 +201,25 @@ Child_specific_model <- brm(formula,
 # Fifth try: now running it on the training data (15 min)
 ```
 
+# Second model including age
+```{r}
+Child_specific_model_with_age <- brm(formula2,
+             data = Centrality_t2_training,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T, 
+             iter = 1000,
+             warmup = 500,
+             cores = cores, 
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1"))
+             )
+```
+
+
 # Here we should have a K-fold or LOO section
 
 # Evaluate classification model
@@ -209,4 +243,6 @@ accuracy <- mean(Centrality_t2_test$predicted_class == Centrality_t2_test$Knows_
 print(paste("Accuracy:", accuracy))
 
 ```
+
+
 
