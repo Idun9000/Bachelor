@@ -205,29 +205,31 @@ AOA_model_for_kfold <- brm(
 # here we will need some kind of K-fold or LOO
 ```{r}
 # Performing K-fold
-cv_results <- kfold(AOA_model_for_kfold, K = 5)
+#cv_results <- kfold(AOA_model_for_kfold, K = 5)
 
-print(cv_results)
+#print(cv_results)
 ```
 
 
 # Calculating simple accuracy - just for fun
 ```{r}
-# Based on the yardstick package
+# Generate posterior predictions
+posterior_predictions <- brms::posterior_predict(AOA_model_for_accuracy,
+                newdata = merged_AOA_test)
+    
+# Calculate mean predicted probabilities for each observation
+predicted_probs <- apply(posterior_predictions, 2, mean)
 
-# use posterior_predict to generate predictions on the test set
-posterior_predictive <- posterior_predict(AOA_model_for_accuracy, newdata = merged_AOA_test) # matrix where each row corresponds to a prediction for an observation in the test set, and each column corresponds to a draw from the posterior distribution of the predicted probabilities
+# Convert to binary predictions based on a threshold (e.g., 0.5)
+predicted_classes <- ifelse(predicted_probs > 0.5, 1, 0)
 
-# for each observation, calculate the mean of all the draws from the posterior predictive distribution for that observation.
-merged_AOA_test$predicted_prob <- apply(posterior_predictive, 2, mean)
+# Assuming your test data has the actual outcomes in a column named 'Knows_Word'
+actual_classes <- merged_AOA_test$Knows_Word
 
-# If the predicted probability is greater than 0.5, we predict the class as 1 (knows the word)
-merged_AOA_test$predicted_class <- ifelse(merged_AOA_test$predicted_prob > 0.5, 1, 0)
+# Calculate accuracy
+accuracy <- mean(predicted_classes == actual_classes)
 
-# Calculate accuracy - compare predictions with actual outcome
-accuracy <- mean(merged_AOA_test$predicted_class == merged_AOA_test$Knows_Word)
-
-# Output the performance metrics
+# Print accuracy
 print(paste("Accuracy:", accuracy))
 ```
 

@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 # Loading packages
 ```{r}
-pacman::p_load(tidyverse, brms, rsample, yardstick, rsample)
+pacman::p_load(tidyverse, brms, rsample, yardstick, rsample, posterior)
 ```
 
 # Loading data
@@ -141,7 +141,7 @@ Hmmm okay doing the stats make me reconsider
 
 ---
 
-# Splitting the model in train and test data
+# Splitting the model in train and test data based on group = Child_ID (no children in the both sets)
 ```{r}
 # Splitting based on child_id
 set.seed(123)
@@ -180,7 +180,7 @@ seed <- 123
 # Creating model
 ```{r}
 Child_specific_model <- brm(formula,
-             data = Centrality_DF_t2_training,
+             data = Centrality_t2_training,
              family = bernoulli,
              backend = "cmdstanr",
              prior = model_priors,
@@ -191,7 +191,8 @@ Child_specific_model <- brm(formula,
              chains = chains,
              seed = seed,
              threads = threading(2),
-             stan_model_args = list(stanc_options = list("O1"))
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_specific_training.rds"
              )
 
 # First try: cores = 4, chains = 2, iter = 1000, warmup = 500, prior(normal(0,10)) (6.66 hours)
@@ -200,6 +201,25 @@ Child_specific_model <- brm(formula,
 # Fourth try: setting cores with parallel:detectCores() (still 18 min but i guess it makes sense. 8 cores will not help when there are only 2 chains)
 # Fifth try: now running it on the training data (15 min)
 ```
+# Same model but for k-fold
+```{r}
+Child_specific_model_k <- brm(formula,
+             data = Centrality_DF_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T, 
+             iter = 1000,
+             warmup = 500,
+             cores = cores, 
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_specific_kfold.rds"
+             )
+```
+
 
 # Second model including age
 ```{r}
@@ -229,27 +249,27 @@ Child_specific_model <- brm(formula,
 
 
 
-# Evaluate classification model
 ```{r}
-# Just for fun checking how well our model does now
-# Based on the yardstick package
+# Generate posterior predictions
+posterior_predictions <- brms::posterior_predict(Child_specific_model,
+                newdata = Centrality_t2_test,
+                re_formula = NULL, allow_new_levels = TRUE,
+                sample_new_levels = "uncertainty")
+    
+# Calculate mean predicted probabilities for each observation
+predicted_probs <- apply(posterior_predictions, 2, mean)
 
-# use posterior_predict to generate predictions on the test set
-posterior_predictive <- posterior_predict(Child_specific_model, newdata = Centrality_t2_test) # matrix where each row corresponds to a prediction for an observation in the test set, and each column corresponds to a draw from the posterior distribution of the predicted probabilities
+# Convert to binary predictions based on a threshold (e.g., 0.5)
+predicted_classes <- ifelse(predicted_probs > 0.5, 1, 0)
 
-# for each observation, calculate the mean of all the draws from the posterior predictive distribution for that observation.
-Centrality_t2_test$predicted_prob <- apply(posterior_predictive, 2, mean)
+# Assuming your test data has the actual outcomes in a column named 'Knows_Word'
+actual_classes <- Centrality_t2_test$Knows_Word
 
-# If the predicted probability is greater than 0.5, we predict the class as 1 (knows the word)
-Centrality_t2_test$predicted_class <- ifelse(Centrality_t2_test$predicted_prob > 0.5, 1, 0)
+# Calculate accuracy
+accuracy <- mean(predicted_classes == actual_classes)
 
-# Calculate accuracy - compare predictions with actual outcome
-accuracy <- mean(Centrality_t2_test$predicted_class == Centrality_t2_test$Knows_Word)
-
-# Output the performance metrics
+# Print accuracy
 print(paste("Accuracy:", accuracy))
-
 ```
-
-
+Inspiration from: https://www.andrewheiss.com/blog/2021/11/10/ame-bayes-re-guide/#different-kinds-of-average-predictions-with-multilevel-models
 
