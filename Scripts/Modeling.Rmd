@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 # Loading packages
 ```{r}
-pacman::p_load(tidyverse, brms, rsample, yardstick)
+pacman::p_load(tidyverse, brms, rsample, yardstick, rsample)
 ```
 
 # Loading data
@@ -180,7 +180,7 @@ seed <- 123
 # Creating model
 ```{r}
 Child_specific_model <- brm(formula,
-             data = Centrality_t2_training,
+             data = Centrality_DF_t2_training,
              family = bernoulli,
              backend = "cmdstanr",
              prior = model_priors,
@@ -203,7 +203,7 @@ Child_specific_model <- brm(formula,
 
 # Second model including age
 ```{r}
-Child_specific_model_with_age <- brm(formula2,
+#Child_specific_model_with_age <- brm(formula2,
              data = Centrality_t2_training,
              family = bernoulli,
              backend = "cmdstanr",
@@ -221,6 +221,13 @@ Child_specific_model_with_age <- brm(formula2,
 
 
 # Here we should have a K-fold or LOO section
+```{r}
+# Perform k-fold cross-validation
+#cv_results <- kfold(Child_specific_model, K = 5)
+
+```
+
+
 
 # Evaluate classification model
 ```{r}
