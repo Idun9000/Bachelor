@@ -163,6 +163,25 @@ test_data <- grouped_data %>% filter(!(Child_ID %in% train_child))
 Centrality_t2_training <- train_data %>% ungroup()
 Centrality_t2_test <- test_data %>% ungroup()
 
+
+# Adding ordered factors
+education_levels<- c("Some Secondary", "Secondary", "Some College", "College", "Some Graduate", "Graduate")
+Centrality_t2_test <- Centrality_t2_test %>% 
+    mutate(age = factor(age,
+                        ordered = TRUE, 
+                        levels = sort(unique(age))),
+           caregiver_education = factor(caregiver_education,
+                                        ordered = TRUE,
+                                        levels = education_levels))
+
+Centrality_t2_training <- Centrality_t2_training %>% 
+    mutate(age = factor(age,
+                        ordered = TRUE, 
+                        levels = sort(unique(age))),
+           caregiver_education = factor(caregiver_education,
+                                        ordered = TRUE,
+                                        levels = education_levels))
+
 #save
 write.csv(Centrality_t2_training, "../Data/Centrality_t2_training.csv")
 write.csv(Centrality_t2_test, "../Data/Centrality_t2_test.csv")
@@ -223,7 +242,7 @@ Child_specific_model_k <- brm(formula,
 
 # Second model including age
 ```{r}
-#Child_specific_model_with_age <- brm(formula2,
+Child_specific_model_with_age <- brm(formula2,
              data = Centrality_t2_training,
              family = bernoulli,
              backend = "cmdstanr",
@@ -235,20 +254,50 @@ Child_specific_model_k <- brm(formula,
              chains = chains,
              seed = seed,
              threads = threading(2),
-             stan_model_args = list(stanc_options = list("O1"))
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_specific_age_training.rds"
              )
 ```
 
+# Second model including age but for k-fold
+```{r}
+Child_specific_model_with_age_k <- brm(formula2,
+             data = Centrality_DF_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T, 
+             iter = 1000,
+             warmup = 500,
+             cores = cores, 
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_specific_age_kfold.rds"
+             )
 
-# Here we should have a K-fold or LOO section
+Child_specific_model_with_age_k <- readRDS("../Models/Child_specific_age_kfold.rds")
+```
+
+# K-fold: Original child specific model
 ```{r}
 # Perform k-fold cross-validation
-#cv_results <- kfold(Child_specific_model, K = 5)
+#k_fold_child_specific <- kfold(Child_specific_model_k, K = 5)
 
+#saveRDS(k_fold_child_specific, "../Models/kfold_Child_Specific.rds")
+print(k_fold_child_specific)
+```
+
+# K-fold: child specific model + age
+```{r}
+#k_fold_child_specific_age <- kfold(Child_specific_model_with_age_k, K = 5)
+#saveRDS(k_fold_child_specific, "../Models/kfold_Child_Specific_with_age.rds")
+print(k_fold_child_specific_age)
 ```
 
 
-
+# Accuracy: Original child specific model
 ```{r}
 # Generate posterior predictions
 posterior_predictions <- brms::posterior_predict(Child_specific_model,
@@ -273,3 +322,26 @@ print(paste("Accuracy:", accuracy))
 ```
 Inspiration from: https://www.andrewheiss.com/blog/2021/11/10/ame-bayes-re-guide/#different-kinds-of-average-predictions-with-multilevel-models
 
+# Accuracy: Child specific model + age
+```{r}
+# Generate posterior predictions
+posterior_predictions1 <- brms::posterior_predict(Child_specific_model_with_age,
+                newdata = Centrality_t2_test,
+                re_formula = NULL, allow_new_levels = TRUE,
+                sample_new_levels = "uncertainty")
+    
+# Calculate mean predicted probabilities for each observation
+predicted_probs1 <- apply(posterior_predictions1, 2, mean)
+
+# Convert to binary predictions based on a threshold (e.g., 0.5)
+predicted_classes1 <- ifelse(predicted_probs1 > 0.5, 1, 0)
+
+# Assuming your test data has the actual outcomes in a column named 'Knows_Word'
+actual_classes1 <- Centrality_t2_test$Knows_Word
+
+# Calculate accuracy
+accuracy1 <- mean(predicted_classes1 == actual_classes1)
+
+# Print accuracy
+print(paste("Accuracy:", accuracy1))
+```
