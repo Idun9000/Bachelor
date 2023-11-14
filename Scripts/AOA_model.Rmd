@@ -166,48 +166,55 @@ AOA_priors <- c(
     prior(normal(0, 10), class = b)
 )
 
-AOA_model_for_accuracy <- brm(
-    formula = formula_AOA,
-    data = merged_AOA_training,
-    family = bernoulli,
-    backend = "cmdstanr",
-    prior = AOA_priors,
-    sample_prior = T, 
-    iter = 1000,
-    warmup = 500,
-    cores = parallel::detectCores(), 
-    chains = 2,
-    seed = 123,
-    threads = threading(2),
-    stan_model_args = list(stanc_options = list("O1"))
-)
+# AOA_model_for_accuracy <- brm(
+#     formula = formula_AOA,
+#     data = merged_AOA_training,
+#     family = bernoulli,
+#     backend = "cmdstanr",
+#     prior = AOA_priors,
+#     sample_prior = T,
+#     iter = 1000,
+#     warmup = 500,
+#     cores = parallel::detectCores(),
+#     chains = 2,
+#     seed = 123,
+#     threads = threading(2),
+#     stan_model_args = list(stanc_options = list("O1")),
+#     file = "../Models/AOA_training.rds"
+# )
+
+AOA_model_for_accuracy <-  readRDS("../Models/AOA_training.rds")
 ```
 # Model for k-fold
 ```{r}
-AOA_model_for_kfold <- brm(
-    formula = formula_AOA,
-    data = merged_AOA,
-    family = bernoulli,
-    backend = "cmdstanr",
-    prior = AOA_priors,
-    sample_prior = T, 
-    iter = 1000,
-    warmup = 500,
-    cores = parallel::detectCores(), 
-    chains = 2,
-    seed = 123,
-    threads = threading(2),
-    stan_model_args = list(stanc_options = list("O1"))
-)
+# AOA_model_for_kfold <- brm(
+#     formula = formula_AOA,
+#     data = merged_AOA,
+#     family = bernoulli,
+#     backend = "cmdstanr",
+#     prior = AOA_priors,
+#     sample_prior = T,
+#     iter = 1000,
+#     warmup = 500,
+#     cores = parallel::detectCores(),
+#     chains = 2,
+#     seed = 123,
+#     threads = threading(2),
+#     stan_model_args = list(stanc_options = list("O1")),
+#     file = "../Models/AOA_model_kfold.rds"
+# )
+
+AOA_model_for_kfold <-  readRDS("../Models/AOA_model_kfold.rds")
 ```
 
 
 # here we will need some kind of K-fold or LOO
 ```{r}
 # Performing K-fold
-#cv_results <- kfold(AOA_model_for_kfold, K = 5)
-
-#print(cv_results)
+#k_fold_AOA <- kfold(AOA_model_for_kfold, K = 5)
+#saveRDS(k_fold_AOA, "../Models/kfold_AOA.rds")
+k_fold_AOA <-  readRDS("../Models/kfold_AOA.rds")
+print(k_fold_AOA)
 ```
 
 
