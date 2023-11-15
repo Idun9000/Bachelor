@@ -1,0 +1,254 @@
+---
+title: "Global_model"
+author: "Tilde Sloth"
+date: "2023-11-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Loading Packages
+```{r}
+pacman::p_load(tidyverse, brms)
+```
+
+# Loading Data
+```{r}
+global_centrality <- read_csv("../Data/Global_centrality.csv")
+metadata <-  read_csv("../Data/Cleaned_USA.csv")
+```
+# Crating df for fitting model
+```{r}
+Global_centrality_df <- merge(global_centrality, metadata, by = "item_definition")
+
+# Adding timepoint column
+Timepoint_data <- Global_centrality_df %>% 
+    group_by(child_id) %>% 
+    distinct(age)%>%
+    arrange(child_id, age)%>%
+    mutate(Timepoint = rank(age))
+
+Global_centrality_df <- merge(x = Global_centrality_df, y = Timepoint_data, by = c("child_id", "age"))
+
+# Changing value column to Knows_Word column
+Global_centrality_df <- Global_centrality_df %>% 
+    rename(Knows_Word = value)
+    
+
+# Remove duplicates based on all columns
+Global_centrality_df <- Global_centrality_df %>% distinct()
+```
+
+
+# Simplyfying the data by assuming that all words learned at t1 will also be learned at t2 (even though there are exceptions)
+```{r}
+#Only interested in t1 and t2 for now
+Global_centrality_df <- Global_centrality_df %>% 
+    filter(Timepoint == 1 | Timepoint == 2)
+
+# First, create a data frame of known words at timepoint 1
+known_at_timepoint_1 <- Global_centrality_df %>%
+  filter(Timepoint == 1 & Knows_Word == 1) %>%
+  select(child_id, item_definition) # Keep only the necessary columns
+
+# Making sure there are no duplicates
+known_at_timepoint_1 <- known_at_timepoint_1 %>%
+  distinct(child_id, item_definition, .keep_all = TRUE)
+
+# Create a data frame of known words at timepoint 2
+known_at_timepoint_2 <- Global_centrality_df %>%
+  filter(Timepoint == 2 & Knows_Word == 1) %>%
+  select(child_id, item_definition) # Keep only the necessary columns
+
+# Making sure there are no duplicates
+known_at_timepoint_2 <- known_at_timepoint_2 %>%
+  distinct(child_id, item_definition, .keep_all = TRUE)
+
+# Figuring out which words are known at t1 but not at t2 so we can check if it works later on
+words_known_at_1_not_at_2 <- anti_join(known_at_timepoint_1, known_at_timepoint_2, 
+                                       by = c("child_id", "item_definition"))
+
+# Overwriting t2 to knows_word = 1 when word is known at t1 
+Global_centrality_df <- Global_centrality_df %>% 
+  left_join(known_at_timepoint_1 %>% 
+              select(child_id, item_definition) %>% 
+              mutate(Knows_Word_at_2 = 1), by = c("child_id", "item_definition")) %>%
+  mutate(Knows_Word = ifelse(Timepoint == 2 & !is.na(Knows_Word_at_2), 1, Knows_Word)) %>%
+  select(-Knows_Word_at_2) # Removing the helper column
+
+```
+
+# Cleaning up a bit in the columns
+```{r}
+Global_centrality_df <- Global_centrality_df %>% 
+    select(child_id, 
+           age, 
+           item_definition, 
+           Knows_Word,birth_order, 
+           caregiver_education, 
+           sex,
+           Semantic,
+           Phonetic,
+           Word_length, 
+           Timepoint)
+```
+
+# Saving
+```{r}
+write_csv(x = Global_centrality_df,file = "../Data/Cleaned/Global_centrality_DF.csv")
+```
+
+# Removing t1
+```{r}
+Global_centrality_df_t2 <- Global_centrality_df %>% 
+    filter(Timepoint == 2)
+
+# Remove duplicates based on all columns
+Global_centrality_df_t2 <- Global_centrality_df_t2 %>% distinct()
+```
+
+# Setting formula
+```{r}
+formula2 <-  brms::bf(Knows_Word ~ 1 + Semantic + Phonetic + Word_length + age + (1|child_id))
+```
+
+# Setting priors
+```{r}
+model_priors <- c(
+    prior(normal(0, 3), class = b),
+    prior(normal(0, 3), class = Intercept),
+    prior(normal(0,2), class = sd)
+)
+```
+
+# Splitting the model in train and test data based on group = Child_ID (no children in the both sets)
+```{r}
+# Splitting based on child_id
+set.seed(123)
+
+# Group by 'child' and then use group_split
+grouped_data <- Global_centrality_df_t2 %>% group_by(child_id)
+
+# Get unique groups (children)
+children <- grouped_data %>% group_keys()
+
+# Sample the groups
+train_child <- sample(children$child_id, size = round(nrow(children) * 0.8))
+
+# Split the data based on sampled groups
+train_data <- grouped_data %>% filter(child_id %in% train_child)
+test_data <- grouped_data %>% filter(!(child_id %in% train_child))
+
+# Ungroup and create final datasets
+Global_centrality_t2_training <- train_data %>% ungroup()
+Global_centrality_t2_test <- test_data %>% ungroup()
+
+
+# Adding ordered factors
+education_levels<- c("Some Secondary", "Secondary", "Some College", "College", "Some Graduate", "Graduate")
+Global_centrality_t2_test <- Global_centrality_t2_test %>% 
+    mutate(age = factor(age,
+                        ordered = TRUE, 
+                        levels = sort(unique(age))),
+           caregiver_education = factor(caregiver_education,
+                                        ordered = TRUE,
+                                        levels = education_levels))
+
+Global_centrality_t2_training <- Global_centrality_t2_training %>% 
+    mutate(age = factor(age,
+                        ordered = TRUE, 
+                        levels = sort(unique(age))),
+           caregiver_education = factor(caregiver_education,
+                                        ordered = TRUE,
+                                        levels = education_levels))
+
+#save
+write.csv(Global_centrality_t2_training, "../Data/Global_centrality_t2_training.csv")
+write.csv(Global_centrality_t2_test, "../Data/Global_centrality_t2_test.csv")
+```
+
+# Setting model variables
+```{r}
+cores <- parallel::detectCores()
+chains <- 2
+seed <- 123
+```
+
+
+# Model with age (training data)
+```{r}
+# Global_centrality_model_with_age <- brm(formula2,
+#              data = Global_centrality_t2_training,
+#              family = bernoulli,
+#              backend = "cmdstanr",
+#              prior = model_priors,
+#              sample_prior = T,
+#              iter = 1000,
+#              warmup = 500,
+#              cores = cores,
+#              chains = chains,
+#              seed = seed,
+#              threads = threading(2),
+#              stan_model_args = list(stanc_options = list("O1")),
+#              file = "../Models/Global_centrality_with_age_training.rds"
+#              )
+
+Global_centrality_model_with_age <- readRDS("../Models/Global_centrality_with_age_training.rds")
+```
+
+# Model with age (kfold)
+```{r}
+# Global_centrality_model_with_age_k <- brm(formula2,
+#              data = Global_centrality_df_t2,
+#              family = bernoulli,
+#              backend = "cmdstanr",
+#              prior = model_priors,
+#              sample_prior = T,
+#              iter = 1000,
+#              warmup = 500,
+#              cores = cores,
+#              chains = chains,
+#              seed = seed,
+#              threads = threading(2),
+#              stan_model_args = list(stanc_options = list("O1")),
+#              file = "../Models/Global_centrality_with_age_kfold.rds"
+#             )
+
+Global_centrality_model_with_age_k <- readRDS("../Models/Global_centrality_with_age_kfold.rds")
+```
+
+# K-fold: global centrality with age
+```{r}
+#kfold_Global_centrality_with_age <- kfold(Global_centrality_model_with_age_k, K = 5)
+#saveRDS(kfold_Global_centrality_with_age, "../Models/kfold_Global_centrality_with_age.rds")
+
+#kfold_Global_centrality_with_age <-  readRDS("../Models/kfold_Global_centrality_with_age.rds")
+#print(kfold_Global_centrality_with_age)
+```
+
+
+# Accuracy: global centrality with age
+```{r}
+# Generate posterior predictions
+posterior_predictions <- brms::posterior_predict(Global_centrality_model_with_age,
+                newdata = Global_centrality_t2_test,
+                re_formula = NULL, allow_new_levels = TRUE,
+                sample_new_levels = "uncertainty")
+    
+# Calculate mean predicted probabilities for each observation
+predicted_probs <- apply(posterior_predictions, 2, mean)
+
+# Convert to binary predictions based on a threshold (e.g., 0.5)
+predicted_classes <- ifelse(predicted_probs > 0.5, 1, 0)
+
+# Assuming your test data has the actual outcomes in a column named 'Knows_Word'
+actual_classes <- Global_centrality_t2_test$Knows_Word
+
+# Calculate accuracy
+accuracy <- mean(predicted_classes == actual_classes)
+
+# Print accuracy
+print(paste("Accuracy:", accuracy))
+```

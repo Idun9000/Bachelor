@@ -56,6 +56,8 @@ formula <- brms::bf(Knows_Word ~ 1 + Semantic_centrality + Phonological_centrali
 
 formula2 <-  brms::bf(Knows_Word ~ 1 + Semantic_centrality + Phonological_centrality + Word_length_centrality + age + (1|Child_ID))
 
+formula3 <- brms::bf(Knows_Word ~ 1 + age + (1|Child_ID))
+
 #Conceptually, using trials(1) together with family = binomial is the same as using family = bernoulli. It is more straightforward to use bernoulli since it models binary outcomes with a single trial per observation. Family = binomial models outcomes with 1 or more trials per observation
 ```
 
@@ -286,6 +288,50 @@ Child_specific_model_with_age <- readRDS("../Models/Child_specific_age_training.
 Child_specific_model_with_age_k <- readRDS("../Models/Child_specific_age_kfold.rds")
 ```
 
+# Third model
+```{r}
+# Child_specific_model_only_age <- brm(formula3,
+#              data = Centrality_t2_training,
+#              family = bernoulli,
+#              backend = "cmdstanr",
+#              prior = model_priors,
+#              sample_prior = T,
+#              iter = 1000,
+#              warmup = 500,
+#              cores = cores,
+#              chains = chains,
+#              seed = seed,
+#              threads = threading(2),
+#              stan_model_args = list(stanc_options = list("O1")),
+#              file = "../Models/Child_specific_only_age.rds"
+#              )
+
+Child_specific_model_only_age <- readRDS("../Models/Child_specific_only_age.rds")
+```
+
+# Third model k fold
+```{r}
+# Child_specific_model_only_age_k <- brm(formula3,
+#              data = Centrality_DF_t2,
+#              family = bernoulli,
+#              backend = "cmdstanr",
+#              prior = model_priors,
+#              sample_prior = T,
+#              iter = 1000,
+#              warmup = 500,
+#              cores = cores,
+#              chains = chains,
+#              seed = seed,
+#              threads = threading(2),
+#              stan_model_args = list(stanc_options = list("O1")),
+#              file = "../Models/Child_specific_only_age_kfold.rds"
+#              )
+
+Child_specific_model_only_age_k <- readRDS("../Models/Child_specific_only_age_kfold.rds")
+```
+
+
+
 # K-fold: Original child specific model
 ```{r}
 #k_fold_child_specific <- kfold(Child_specific_model_k, K = 5)
@@ -304,6 +350,15 @@ print(k_fold_child_specific)
 k_fold_child_specific_age <-  readRDS("../Models/kfold_Child_Specific_with_age.rds")
 print(k_fold_child_specific_age)
 ```
+# K-fold: only age
+```{r}
+#k_fold_child_specific_only_age <- kfold(Child_specific_model_only_age_k, K = 5)
+#saveRDS(k_fold_child_specific_only_age, "../Models/kfold_Child_Specific_only_age.rds")
+
+#k_fold_child_specific_only_age <-  readRDS("../Models/kfold_Child_Specific_only_age.rds")
+#print(k_fold_child_specific_only_age)
+```
+
 
 
 # Accuracy: Original child specific model
@@ -354,3 +409,29 @@ accuracy1 <- mean(predicted_classes1 == actual_classes1)
 # Print accuracy
 print(paste("Accuracy:", accuracy1))
 ```
+
+
+# Accuracy: Child specific only age
+```{r}
+# Generate posterior predictions
+posterior_predictions2 <- brms::posterior_predict(Child_specific_model_only_age,
+                newdata = Centrality_t2_test,
+                re_formula = NULL, allow_new_levels = TRUE,
+                sample_new_levels = "uncertainty")
+    
+# Calculate mean predicted probabilities for each observation
+predicted_probs2 <- apply(posterior_predictions2, 2, mean)
+
+# Convert to binary predictions based on a threshold (e.g., 0.5)
+predicted_classes2 <- ifelse(predicted_probs2 > 0.5, 1, 0)
+
+# Assuming your test data has the actual outcomes in a column named 'Knows_Word'
+actual_classes2 <- Centrality_t2_test$Knows_Word
+
+# Calculate accuracy
+accuracy2 <- mean(predicted_classes2 == actual_classes2)
+
+# Print accuracy
+print(paste("Accuracy:", accuracy2))
+```
+
