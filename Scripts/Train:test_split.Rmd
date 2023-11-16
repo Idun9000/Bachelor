@@ -1,0 +1,95 @@
+---
+title: "Test/train split"
+author: "Tilde Sloth"
+date: "2023-11-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# loading packages
+```{r}
+pacman::p_load(tidyverse)
+```
+
+# Loading data
+```{r}
+Global_centrality <- read_csv("../Bachelor/Data/Cleaned/Global_centrality_DF.csv")
+Child_centrality <-  read_csv("../Bachelor/Data/Cleaned/CENTRALITY_DF.csv")
+```
+
+# Removing t1
+```{r}
+Centrality_DF_t2 <- Child_centrality %>% 
+    filter(Timepoint == 2)
+
+Global_centrality_df_t2 <- Global_centrality %>% 
+    filter(Timepoint == 2)
+```
+
+# Figuring out that there is still duplicates
+```{r}
+# Remove duplicates based on all columns
+Centrality_DF_t2 <- Centrality_DF_t2 %>% distinct()
+
+Global_centrality_df_t2 <- Global_centrality_df_t2 %>% distinct()
+```
+
+# Splitting the model in train and test data based on group = Child_ID (no children in the both sets)
+```{r}
+# Splitting based on child_id
+set.seed(123)
+
+# Group by 'child' and then use group_split
+grouped_data <- Centrality_DF_t2 %>% group_by(Child_ID)
+
+# Get unique groups (children)
+children <- grouped_data %>% group_keys()
+
+# Sample the groups
+train_child <- sample(children$Child_ID, size = round(nrow(children) * 0.8))
+
+# Split the data based on sampled groups
+train_data <- grouped_data %>% filter(Child_ID %in% train_child)
+test_data <- grouped_data %>% filter(!(Child_ID %in% train_child))
+
+# Ungroup and create final datasets
+Centrality_t2_training <- train_data %>% ungroup()
+Centrality_t2_test <- test_data %>% ungroup()
+
+#save
+write.csv(Centrality_t2_training, "../Bachelor/Data/Centrality_t2_training.csv")
+write.csv(Centrality_t2_test, "../Bachelor/Data/Centrality_t2_test.csv")
+```
+
+# Splitting the model in train and test data based on group = Child_ID (no children in the both sets)
+```{r}
+# Splitting based on child_id
+set.seed(123)
+
+# Group by 'child' and then use group_split
+grouped_data <- Global_centrality_df_t2 %>% group_by(child_id)
+
+# Get unique groups (children)
+children <- grouped_data %>% group_keys()
+
+# Sample the groups
+train_child <- sample(children$child_id, size = round(nrow(children) * 0.8))
+
+# Split the data based on sampled groups
+train_data <- grouped_data %>% filter(child_id %in% train_child)
+test_data <- grouped_data %>% filter(!(child_id %in% train_child))
+
+# Ungroup and create final datasets
+Global_centrality_t2_training <- train_data %>% ungroup()
+Global_centrality_t2_test <- test_data %>% ungroup()
+
+#save
+write.csv(Global_centrality_t2_training, "../Bachelor/Data/Global_centrality_t2_training.csv")
+write.csv(Global_centrality_t2_test, "../Bachelor/Data/Global_centrality_t2_test.csv")
+```
+
+
