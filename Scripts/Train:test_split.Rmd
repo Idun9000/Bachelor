@@ -17,8 +17,8 @@ pacman::p_load(tidyverse)
 
 # Loading data
 ```{r}
-Global_centrality <- read_csv("../Bachelor/Data/Cleaned/Global_centrality_DF.csv")
-Child_centrality <-  read_csv("../Bachelor/Data/Cleaned/CENTRALITY_DF.csv")
+Global_centrality <- read_csv("../Data/Cleaned/Global_centrality_DF.csv")
+Child_centrality <-  read_csv("../Data/Cleaned/CENTRALITY_DF.csv")
 ```
 
 # Removing t1
@@ -61,8 +61,8 @@ Centrality_t2_training <- train_data %>% ungroup()
 Centrality_t2_test <- test_data %>% ungroup()
 
 #save
-write.csv(Centrality_t2_training, "../Bachelor/Data/Centrality_t2_training.csv")
-write.csv(Centrality_t2_test, "../Bachelor/Data/Centrality_t2_test.csv")
+write.csv(Centrality_t2_training, "../Data/Centrality_t2_training.csv")
+write.csv(Centrality_t2_test, "../Data/Centrality_t2_test.csv")
 ```
 
 # Splitting the model in train and test data based on group = Child_ID (no children in the both sets)
@@ -88,8 +88,8 @@ Global_centrality_t2_training <- train_data %>% ungroup()
 Global_centrality_t2_test <- test_data %>% ungroup()
 
 #save
-write.csv(Global_centrality_t2_training, "../Bachelor/Data/Global_centrality_t2_training.csv")
-write.csv(Global_centrality_t2_test, "../Bachelor/Data/Global_centrality_t2_test.csv")
+write.csv(Global_centrality_t2_training, "../Data/Global_centrality_t2_training.csv")
+write.csv(Global_centrality_t2_test, "../Data/Global_centrality_t2_test.csv")
 ```
 
 
