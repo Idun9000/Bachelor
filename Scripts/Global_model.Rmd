@@ -18,6 +18,16 @@ pacman::p_load(tidyverse, brms)
 ```{r}
 global_centrality <- read_csv("../Data/Global_centrality.csv")
 metadata <-  read_csv("../Data/Cleaned_USA.csv")
+
+# there was weird things about the global_centrality 
+# Replace "for." with "for"
+global_centrality$item_definition <- gsub("for\\.", "for", global_centrality$item_definition)
+
+# Replace "don.t" with "don't"
+global_centrality$item_definition <- gsub("don\\.t", "don't", global_centrality$item_definition)
+
+# Replace "if." with "if"
+global_centrality$item_definition <- gsub("if\\.", "if", global_centrality$item_definition)
 ```
 # Crating df for fitting model
 ```{r}
@@ -36,9 +46,6 @@ Global_centrality_df <- merge(x = Global_centrality_df, y = Timepoint_data, by =
 Global_centrality_df <- Global_centrality_df %>% 
     rename(Knows_Word = value)
     
-
-# Remove duplicates based on all columns
-Global_centrality_df <- Global_centrality_df %>% distinct()
 ```
 
 
@@ -111,7 +118,10 @@ Global_centrality_df_t2 <- Global_centrality_df_t2 %>% distinct()
 
 # Setting formula
 ```{r}
+formula <- brms::bf(Knows_Word ~ 1 + Semantic + Phonetic + Word_length + (1|child_id))
+
 formula2 <-  brms::bf(Knows_Word ~ 1 + Semantic + Phonetic + Word_length + age + (1|child_id))
+
 ```
 
 # Setting priors
@@ -121,6 +131,7 @@ model_priors <- c(
     prior(normal(0, 3), class = Intercept),
     prior(normal(0,2), class = sd)
 )
+
 ```
 
 # Splitting the model in train and test data based on group = Child_ID (no children in the both sets)
@@ -177,47 +188,85 @@ seed <- 123
 ```
 
 
+# Model with global centrality
+```{r}
+Global_centrality_model <- brm(formula,
+             data = Global_centrality_t2_training,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Global_centrality_model1.rds"
+             )
+```
+
+# Model with global centrality k fold
+```{r}
+Global_centrality_model <- brm(formula,
+             data = Global_centrality_df_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Global_centrality_model_kfold1.rds"
+             )
+```
+
+
 # Model with age (training data)
 ```{r}
-# Global_centrality_model_with_age <- brm(formula2,
-#              data = Global_centrality_t2_training,
-#              family = bernoulli,
-#              backend = "cmdstanr",
-#              prior = model_priors,
-#              sample_prior = T,
-#              iter = 1000,
-#              warmup = 500,
-#              cores = cores,
-#              chains = chains,
-#              seed = seed,
-#              threads = threading(2),
-#              stan_model_args = list(stanc_options = list("O1")),
-#              file = "../Models/Global_centrality_with_age_training.rds"
-#              )
+Global_centrality_model_with_age <- brm(formula2,
+             data = Global_centrality_t2_training,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Global_centrality_with_age_training1.rds"
+             )
 
-Global_centrality_model_with_age <- readRDS("../Models/Global_centrality_with_age_training.rds")
 ```
 
 # Model with age (kfold)
 ```{r}
-# Global_centrality_model_with_age_k <- brm(formula2,
-#              data = Global_centrality_df_t2,
-#              family = bernoulli,
-#              backend = "cmdstanr",
-#              prior = model_priors,
-#              sample_prior = T,
-#              iter = 1000,
-#              warmup = 500,
-#              cores = cores,
-#              chains = chains,
-#              seed = seed,
-#              threads = threading(2),
-#              stan_model_args = list(stanc_options = list("O1")),
-#              file = "../Models/Global_centrality_with_age_kfold.rds"
-#             )
+Global_centrality_model_with_age_k <- brm(formula2,
+             data = Global_centrality_df_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Global_centrality_with_age_kfold1.rds"
+            )
 
-Global_centrality_model_with_age_k <- readRDS("../Models/Global_centrality_with_age_kfold.rds")
 ```
+
 
 # K-fold: global centrality with age
 ```{r}
@@ -228,11 +277,10 @@ Global_centrality_model_with_age_k <- readRDS("../Models/Global_centrality_with_
 #print(kfold_Global_centrality_with_age)
 ```
 
-
-# Accuracy: global centrality with age
+# Accuracy: global centrality
 ```{r}
 # Generate posterior predictions
-posterior_predictions <- brms::posterior_predict(Global_centrality_model_with_age,
+posterior_predictions <- brms::posterior_predict(Global_centrality_model,
                 newdata = Global_centrality_t2_test,
                 re_formula = NULL, allow_new_levels = TRUE,
                 sample_new_levels = "uncertainty")
@@ -252,3 +300,32 @@ accuracy <- mean(predicted_classes == actual_classes)
 # Print accuracy
 print(paste("Accuracy:", accuracy))
 ```
+
+
+# Accuracy: global centrality with age
+```{r}
+# Generate posterior predictions
+posterior_predictions1 <- brms::posterior_predict(Global_centrality_model_with_age,
+                newdata = Global_centrality_t2_test,
+                re_formula = NULL, allow_new_levels = TRUE,
+                sample_new_levels = "uncertainty")
+    
+# Calculate mean predicted probabilities for each observation
+predicted_probs1 <- apply(posterior_predictions1, 2, mean)
+
+# Convert to binary predictions based on a threshold (e.g., 0.5)
+predicted_classes1 <- ifelse(predicted_probs1 > 0.5, 1, 0)
+
+# Assuming your test data has the actual outcomes in a column named 'Knows_Word'
+actual_classes1 <- Global_centrality_t2_test$Knows_Word
+
+# Calculate accuracy
+accuracy1 <- mean(predicted_classes1 == actual_classes1)
+
+# Print accuracy
+print(paste("Accuracy:", accuracy1))
+```
+
+
+
+

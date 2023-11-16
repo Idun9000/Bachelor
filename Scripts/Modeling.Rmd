@@ -200,21 +200,21 @@ seed <- 123
 
 # Creating model
 ```{r}
-# Child_specific_model <- brm(formula,
-#              data = Centrality_t2_training,
-#              family = bernoulli,
-#              backend = "cmdstanr",
-#              prior = model_priors,
-#              sample_prior = T, 
-#              iter = 1000,
-#              warmup = 500,
-#              cores = cores, 
-#              chains = chains,
-#              seed = seed,
-#              threads = threading(2),
-#              stan_model_args = list(stanc_options = list("O1")),
-#              file = "../Models/Child_specific_training.rds"
-#              ) 
+Child_specific_model <- brm(formula,
+             data = Centrality_t2_training,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_specific_training.rds"
+             )
 
 # First try: cores = 4, chains = 2, iter = 1000, warmup = 500, prior(normal(0,10)) (6.66 hours)
 # Second try: adding threads for more efficient computation + changing from binomial to bernoulli + narrowing priors (normal(0,5)) (21 minutes)
@@ -222,112 +222,106 @@ seed <- 123
 # Fourth try: setting cores with parallel:detectCores() (still 18 min but i guess it makes sense. 8 cores will not help when there are only 2 chains)
 # Fifth try: now running it on the training data (15 min)
 
-Child_specific_model <- readRDS("../Models/Child_specific_training.rds")
 ```
 # Same model but for k-fold
 ```{r}
-# Child_specific_model_k <- brm(formula,
-#              data = Centrality_DF_t2,
-#              family = bernoulli,
-#              backend = "cmdstanr",
-#              prior = model_priors,
-#              sample_prior = T, 
-#              iter = 1000,
-#              warmup = 500,
-#              cores = cores, 
-#              chains = chains,
-#              seed = seed,
-#              threads = threading(2),
-#              stan_model_args = list(stanc_options = list("O1")),
-#              file = "../Models/Child_specific_kfold.rds"
-#              )
+Child_specific_model_k <- brm(formula,
+             data = Centrality_DF_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_specific_kfold.rds"
+             )
 
-Child_specific_model_k <- readRDS("../Models/Child_specific_kfold.rds")
 ```
 
 
 # Second model including age
 ```{r}
-# Child_specific_model_with_age <- brm(formula2,
-#              data = Centrality_t2_training,
-#              family = bernoulli,
-#              backend = "cmdstanr",
-#              prior = model_priors,
-#              sample_prior = T, 
-#              iter = 1000,
-#              warmup = 500,
-#              cores = cores, 
-#              chains = chains,
-#              seed = seed,
-#              threads = threading(2),
-#              stan_model_args = list(stanc_options = list("O1")),
-#              file = "../Models/Child_specific_age_training.rds"
-#              )
+Child_specific_model_with_age <- brm(formula2,
+             data = Centrality_t2_training,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_specific_age_training.rds"
+             )
 
-Child_specific_model_with_age <- readRDS("../Models/Child_specific_age_training.rds")
 ```
 
 # Second model including age but for k-fold
 ```{r}
-# Child_specific_model_with_age_k <- brm(formula2,
-#              data = Centrality_DF_t2,
-#              family = bernoulli,
-#              backend = "cmdstanr",
-#              prior = model_priors,
-#              sample_prior = T, 
-#              iter = 1000,
-#              warmup = 500,
-#              cores = cores, 
-#              chains = chains,
-#              seed = seed,
-#              threads = threading(2),
-#              stan_model_args = list(stanc_options = list("O1")),
-#              file = "../Models/Child_specific_age_kfold.rds"
-#              )
+Child_specific_model_with_age_k <- brm(formula2,
+             data = Centrality_DF_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_specific_age_kfold.rds"
+             )
 
-Child_specific_model_with_age_k <- readRDS("../Models/Child_specific_age_kfold.rds")
 ```
 
 # Third model
 ```{r}
-# Child_specific_model_only_age <- brm(formula3,
-#              data = Centrality_t2_training,
-#              family = bernoulli,
-#              backend = "cmdstanr",
-#              prior = model_priors,
-#              sample_prior = T,
-#              iter = 1000,
-#              warmup = 500,
-#              cores = cores,
-#              chains = chains,
-#              seed = seed,
-#              threads = threading(2),
-#              stan_model_args = list(stanc_options = list("O1")),
-#              file = "../Models/Child_specific_only_age.rds"
-#              )
+Child_specific_model_only_age <- brm(formula3,
+             data = Centrality_t2_training,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_specific_only_age.rds"
+             )
 
-Child_specific_model_only_age <- readRDS("../Models/Child_specific_only_age.rds")
 ```
 
 # Third model k fold
 ```{r}
-# Child_specific_model_only_age_k <- brm(formula3,
-#              data = Centrality_DF_t2,
-#              family = bernoulli,
-#              backend = "cmdstanr",
-#              prior = model_priors,
-#              sample_prior = T,
-#              iter = 1000,
-#              warmup = 500,
-#              cores = cores,
-#              chains = chains,
-#              seed = seed,
-#              threads = threading(2),
-#              stan_model_args = list(stanc_options = list("O1")),
-#              file = "../Models/Child_specific_only_age_kfold.rds"
-#              )
+Child_specific_model_only_age_k <- brm(formula3,
+             data = Centrality_DF_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_specific_only_age_kfold.rds"
+             )
 
-Child_specific_model_only_age_k <- readRDS("../Models/Child_specific_only_age_kfold.rds")
 ```
 
 
