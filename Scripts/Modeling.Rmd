@@ -32,6 +32,9 @@ formula2 <-  brms::bf(Knows_Word ~ 1 + Semantic_centrality + Phonological_centra
 
 formula3 <- brms::bf(Knows_Word ~ 1 + age + (1|Child_ID))
 
+formula4 <-  brms::bf(Knows_Word ~ 1 + Semantic_centrality + Phonological_centrality + Word_length_centrality + age)
+
+formula5 <- brms::bf(Knows_Word ~ 1 + Semantic_centrality + Phonological_centrality + Word_length_centrality)
 #Conceptually, using trials(1) together with family = binomial is the same as using family = bernoulli. It is more straightforward to use bernoulli since it models binary outcomes with a single trial per observation. Family = binomial models outcomes with 1 or more trials per observation
 ```
 
@@ -45,6 +48,10 @@ model_priors <- c(
     prior(normal(0,2), class = sd)
 )
 
+model_priors4 <- c(
+    prior(normal(0, 3), class = b),
+    prior(normal(0, 3), class = Intercept)
+)
 ```
 
 ## Coefficient prior
@@ -120,7 +127,7 @@ Hmmm okay doing the stats make me reconsider
 # Splitting the model in train and test data based on group = Child_ID (no children in the both sets)
 ```{r}
 Centrality_t2_test <- read_csv("../Data/Centrality_t2_test.csv")
-Centrality_t2_training <- read_csv("../Data/Centrality_t2_training")
+Centrality_t2_training <- read_csv("../Data/Centrality_t2_training.csv")
 
 # Adding ordered factors
 education_levels<- c("Some Secondary", "Secondary", "Some College", "College", "Some Graduate", "Graduate")
@@ -133,6 +140,14 @@ Centrality_t2_test <- Centrality_t2_test %>%
                                         levels = education_levels))
 
 Centrality_t2_training <- Centrality_t2_training %>% 
+    mutate(age = factor(age,
+                        ordered = TRUE, 
+                        levels = sort(unique(age))),
+           caregiver_education = factor(caregiver_education,
+                                        ordered = TRUE,
+                                        levels = education_levels))
+
+Centrality_DF_t2 <- Centrality_DF_t2 %>% 
     mutate(age = factor(age,
                         ordered = TRUE, 
                         levels = sort(unique(age))),
@@ -277,6 +292,43 @@ Child_specific_model_only_age_k <- brm(formula3,
 
 ```
 
+# Fourth model: child_specific_with_age_no_random for kfold
+```{r}
+Child_specific_model_with_age_no_random_k <- brm(formula4,
+             data = Centrality_DF_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors4,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_specific_model_with_age_no_random_kfold1.rds"
+             )
+```
+
+# Fifth model: child_specific_no_random
+```{r}
+Child_specific_model_no_random_k <- brm(formula5,
+             data = Centrality_DF_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors4,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_specific_model_no_random_kfold.rds"
+             )
+```
 
 
 # K-fold: Original child specific model
@@ -306,79 +358,95 @@ print(k_fold_child_specific_age)
 #print(k_fold_child_specific_only_age)
 ```
 
+# K-fold child specific with age no random effects
+```{r}
+# kfold_child_specific_with_age_no_random <- kfold(Child_specific_model_with_age_no_random_k, K = 5)
+# saveRDS(kfold_child_specific_with_age_no_random, "../Models/kfold_Child_Specific_with_age_no_random.rds")
+
+
+print(kfold_child_specific_with_age_no_random)
+```
+# K-fold child specific no random effects
+```{r}
+kfold_child_specific_no_random <- kfold(Child_specific_model_no_random_k, K = 5)
+saveRDS(kfold_child_specific_no_random, "../Models/kfold_Child_Specific_no_random.rds")
+
+
+print(kfold_child_specific_no_random)
+```
 
 
 # Accuracy: Original child specific model
 ```{r}
-# Generate posterior predictions
-posterior_predictions <- brms::posterior_predict(Child_specific_model,
-                newdata = Centrality_t2_test,
-                re_formula = NULL, allow_new_levels = TRUE,
-                sample_new_levels = "uncertainty")
-    
-# Calculate mean predicted probabilities for each observation
-predicted_probs <- apply(posterior_predictions, 2, mean)
-
-# Convert to binary predictions based on a threshold (e.g., 0.5)
-predicted_classes <- ifelse(predicted_probs > 0.5, 1, 0)
-
-# Assuming your test data has the actual outcomes in a column named 'Knows_Word'
-actual_classes <- Centrality_t2_test$Knows_Word
-
-# Calculate accuracy
-accuracy <- mean(predicted_classes == actual_classes)
-
-# Print accuracy
-print(paste("Accuracy:", accuracy))
+# # Generate posterior predictions
+# posterior_predictions <- brms::posterior_predict(Child_specific_model,
+#                 newdata = Centrality_t2_test,
+#                 re_formula = NULL, allow_new_levels = TRUE,
+#                 sample_new_levels = "uncertainty")
+#     
+# # Calculate mean predicted probabilities for each observation
+# predicted_probs <- apply(posterior_predictions, 2, mean)
+# 
+# # Convert to binary predictions based on a threshold (e.g., 0.5)
+# predicted_classes <- ifelse(predicted_probs > 0.5, 1, 0)
+# 
+# # Assuming your test data has the actual outcomes in a column named 'Knows_Word'
+# actual_classes <- Centrality_t2_test$Knows_Word
+# 
+# # Calculate accuracy
+# accuracy <- mean(predicted_classes == actual_classes)
+# 
+# # Print accuracy
+# print(paste("Accuracy:", accuracy))
 ```
 Inspiration from: https://www.andrewheiss.com/blog/2021/11/10/ame-bayes-re-guide/#different-kinds-of-average-predictions-with-multilevel-models
 
 # Accuracy: Child specific model + age
 ```{r}
-# Generate posterior predictions
-posterior_predictions1 <- brms::posterior_predict(Child_specific_model_with_age,
-                newdata = Centrality_t2_test,
-                re_formula = NULL, allow_new_levels = TRUE,
-                sample_new_levels = "uncertainty")
-    
-# Calculate mean predicted probabilities for each observation
-predicted_probs1 <- apply(posterior_predictions1, 2, mean)
-
-# Convert to binary predictions based on a threshold (e.g., 0.5)
-predicted_classes1 <- ifelse(predicted_probs1 > 0.5, 1, 0)
-
-# Assuming your test data has the actual outcomes in a column named 'Knows_Word'
-actual_classes1 <- Centrality_t2_test$Knows_Word
-
-# Calculate accuracy
-accuracy1 <- mean(predicted_classes1 == actual_classes1)
-
-# Print accuracy
-print(paste("Accuracy:", accuracy1))
+# # Generate posterior predictions
+# posterior_predictions1 <- brms::posterior_predict(Child_specific_model_with_age,
+#                 newdata = Centrality_t2_test,
+#                 re_formula = NULL, allow_new_levels = TRUE,
+#                 sample_new_levels = "uncertainty")
+#     
+# # Calculate mean predicted probabilities for each observation
+# predicted_probs1 <- apply(posterior_predictions1, 2, mean)
+# 
+# # Convert to binary predictions based on a threshold (e.g., 0.5)
+# predicted_classes1 <- ifelse(predicted_probs1 > 0.5, 1, 0)
+# 
+# # Assuming your test data has the actual outcomes in a column named 'Knows_Word'
+# actual_classes1 <- Centrality_t2_test$Knows_Word
+# 
+# # Calculate accuracy
+# accuracy1 <- mean(predicted_classes1 == actual_classes1)
+# 
+# # Print accuracy
+# print(paste("Accuracy:", accuracy1))
 ```
 
 
 # Accuracy: Child specific only age
 ```{r}
-# Generate posterior predictions
-posterior_predictions2 <- brms::posterior_predict(Child_specific_model_only_age,
-                newdata = Centrality_t2_test,
-                re_formula = NULL, allow_new_levels = TRUE,
-                sample_new_levels = "uncertainty")
-    
-# Calculate mean predicted probabilities for each observation
-predicted_probs2 <- apply(posterior_predictions2, 2, mean)
-
-# Convert to binary predictions based on a threshold (e.g., 0.5)
-predicted_classes2 <- ifelse(predicted_probs2 > 0.5, 1, 0)
-
-# Assuming your test data has the actual outcomes in a column named 'Knows_Word'
-actual_classes2 <- Centrality_t2_test$Knows_Word
-
-# Calculate accuracy
-accuracy2 <- mean(predicted_classes2 == actual_classes2)
-
-# Print accuracy
-print(paste("Accuracy:", accuracy2))
+# # Generate posterior predictions
+# posterior_predictions2 <- brms::posterior_predict(Child_specific_model_only_age,
+#                 newdata = Centrality_t2_test,
+#                 re_formula = NULL, allow_new_levels = TRUE,
+#                 sample_new_levels = "uncertainty")
+#     
+# # Calculate mean predicted probabilities for each observation
+# predicted_probs2 <- apply(posterior_predictions2, 2, mean)
+# 
+# # Convert to binary predictions based on a threshold (e.g., 0.5)
+# predicted_classes2 <- ifelse(predicted_probs2 > 0.5, 1, 0)
+# 
+# # Assuming your test data has the actual outcomes in a column named 'Knows_Word'
+# actual_classes2 <- Centrality_t2_test$Knows_Word
+# 
+# # Calculate accuracy
+# accuracy2 <- mean(predicted_classes2 == actual_classes2)
+# 
+# # Print accuracy
+# print(paste("Accuracy:", accuracy2))
 ```
 

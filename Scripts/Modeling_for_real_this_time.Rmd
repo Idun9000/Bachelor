@@ -1,0 +1,359 @@
+---
+title: "Modeling for real"
+author: "Tilde Sloth"
+date: "2023-11-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Loading packages
+```{r}
+pacman::p_load(tidyverse, brms, rsample, yardstick, rsample, posterior)
+```
+
+# Loading data for global centrality
+```{r}
+Global_centrality_df_t2 <- read_csv("../Data/Global_centrality_df_t2_updated.csv")
+```
+
+# Loading data for child_specific centrality
+```{r}
+Centrality_DF_t2 <- read_csv("../Data/Centrality_DF_t2_updated.csv")
+```
+
+# Adding ordered factors
+```{r}
+education_levels<- c("Some Secondary", "Secondary", "Some College", "College", "Some Graduate", "Graduate")
+Global_centrality_df_t2 <- Global_centrality_df_t2 %>% 
+    mutate(age = factor(age,
+                        ordered = TRUE, 
+                        levels = sort(unique(age))),
+           caregiver_education = factor(caregiver_education,
+                                        ordered = TRUE,
+                                        levels = education_levels))
+
+Centrality_DF_t2 <- Centrality_DF_t2 %>% 
+    mutate(age = factor(age,
+                        ordered = TRUE, 
+                        levels = sort(unique(age))),
+           caregiver_education = factor(caregiver_education,
+                                        ordered = TRUE,
+                                        levels = education_levels))
+
+```
+
+# Setting formula
+```{r}
+Global1 <- brms::bf(Knows_Word ~ 1+ Semantic + Phonetic + Word_length + age)
+
+Global2 <- brms::bf(Knows_Word ~ 1+ Semantic + Phonetic + Word_length)
+
+Global3 <- brms::bf(Knows_Word ~ 1 + Semantic + Phonetic + Word_length + age + (1|Child_ID))
+
+Global4 <- brms::bf(Knows_Word ~ 1 + Semantic + Phonetic + Word_length + (1|Child_ID))
+    
+Child1 <- brms::bf(Knows_Word ~ 1 + Semantic_centrality + Phonological_centrality + Word_length_centrality + age)
+
+Child2 <- brms::bf(Knows_Word ~ 1 + Semantic_centrality + Phonological_centrality + Word_length_centrality)
+
+Child3 <- brms::bf(Knows_Word ~ 1 + Semantic_centrality + Phonological_centrality + Word_length_centrality + age + (1|Child_ID))
+    
+Child4 <- brms::bf(Knows_Word ~ 1 + Semantic_centrality + Phonological_centrality + Word_length_centrality + (1|Child_ID))
+```
+
+# Setting priors
+```{r}
+#get_prior(formula, data = Centrality_DF_t2)
+model_priors <- c(
+    prior(normal(0, 3), class = b),
+    prior(normal(0, 3), class = Intercept)
+)
+
+model_priors_random <- c(
+    prior(normal(0, 3), class = b),
+    prior(normal(0, 3), class = Intercept),
+    prior(normal(0,2), class = sd)
+)
+```
+
+## Coefficient prior
+The outcome (y) is binary (0 | 1)
+The predictors (x) are bounded continuous variables (between 0 and 1)
+
+The coefficient β1 represents the change in the log odds (of the outcome) for a one-unit change in the predictor x. In logistic regression, we look at the outcome in log odds, because the relationship between the predictor and the log odds of the outcome is linear
+
+The odds of an event are calculated as the probability of the event occurring divided by the probability of the event not occurring. If the probability of success is 0.75, the odds are $$\frac{0.75}{0.25} = 3$$
+
+We can convert the log odds change to an odds ratio (which is easier to interpret), by exponentiating the coefficient: Odds Ratio= $$e^{B_1}$$
+
+
+**The logic**
+--> The increase in the predictor variables can max be 1
+--> With β1 = 2, increasing x from 0 to 1 multiplies the odds of the outcome by $$Odds ratio = e^2 = 7.389$$
+--> With β1 = 3, increasing x from 0 to 1 multiplies the odds of the outcome by $$Odds ratio = e^3 = 20.08$$
+
+--> If the original probability of success at x=0 is 5 %, the odds are $$\frac{0.05}{0.95} = 0.0526$$. Multiplying the odds by 20.09 = new odds of approximately 1.056
+--> To find the new probability corresponding to these odds we isolate p: $$P_{new} = \frac{new odds}{1+newodds}$$
+
+# Looking at different probabilties for odds ratio
+```{r}
+# Define a function to calculate new probability from original probability and odds ratio
+calculate_new_probability <- function(original_probability, odds_ratio) {
+  original_odds <- original_probability / (1 - original_probability)
+  new_odds <- original_odds * odds_ratio
+  new_probability <- new_odds / (1 + new_odds)
+  return(new_probability)
+}
+
+# Set the odds ratio for beta_1 of 3
+odds_ratio_for_beta_3 <- exp(3)
+
+# Create a vector of baseline probabilities
+baseline_probabilities <- seq(0.05, 0.9, by = 0.05)
+
+# Initialize an empty vector to store the new probabilities
+new_probabilities <- numeric(length(baseline_probabilities))
+
+# Loop over the baseline probabilities to calculate the new probabilities
+for (i in seq_along(baseline_probabilities)) {
+  new_probabilities[i] <- calculate_new_probability(baseline_probabilities[i], odds_ratio_for_beta_3)
+}
+
+# Output the results
+results <- data.frame(
+  Baseline_Probability = baseline_probabilities,
+  New_Probability = new_probabilities
+)
+
+print(results)
+
+```
+
+## Intercept prior
+We should consider centering the intercept prior around a negative value. Centering around 50 % indicates that the baseline probability (when all predictors are 0) for a child knowing a word is 50 %. This is not likely given that the whole amount of words in the data set are 618 and most children do not know half of the words at timepoint 2
+
+```{r}
+Percentage_known_words <- Centrality_DF_t2 %>% 
+    group_by(Child_ID) %>% 
+    summarise(Percentage_known_words = sum(Knows_Word)/length(unique(item_definition)))
+
+hist(Percentage_known_words$Percentage_known_words)
+median(Percentage_known_words$Percentage_known_words)
+mean(Percentage_known_words$Percentage_known_words)
+```
+Hmmm okay doing the stats make me reconsider
+
+---
+
+# Setting model variables 
+```{r}
+cores <- parallel::detectCores()
+chains <- 2
+seed <- 123
+```
+
+# Child model 1
+```{r}
+Child_model_1 <- brm(Child1,
+             data = Centrality_DF_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_model_1.rds"
+             )
+```
+
+# Kfold child model 1
+```{r}
+#kfold_child_model_1 <- brms::kfold(Child_model_1, K = 5)
+#saveRDS(kfold_child_model_1, "../Models/kfold_child_model_1.rds")
+```
+
+
+# Child model 2
+```{r}
+Child_model_2 <- brm(Child2,
+             data = Centrality_DF_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_model_2.rds"
+             )
+```
+
+# Kfold child model 2
+```{r}
+#kfold_child_model_2 <-  brms::kfold(Child_model_2, K = 5)
+#saveRDS(kfold_child_model_2, "../Models/kfold_child_model_2.rds")
+```
+
+
+# Child model 3
+```{r}
+Child_model_3_random <- brm(Child3,
+             data = Centrality_DF_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors_random,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_model_3_random.rds"
+             )
+```
+# Kfold. child model 3
+```{r}
+#kfold_child_model_3_random <- brms::kfold(Child_model_3_random, K = 5)
+#saveRDS(kfold_child_model_3_random, "../Models/kfold_child_model_3_random.rds")
+```
+
+
+# Child model 4
+```{r}
+Child_model_4_random <- brm(Child4,
+             data = Centrality_DF_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors_random,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Child_model_4_random.rds"
+             )
+```
+# Kfold child model 4
+```{r}
+#kfold_child_model_4_random <- brms::kfold(Child_model_4_random, K = 5)
+```
+
+
+
+# Global model 1
+```{r}
+Global_model_1 <- brm(Global1,
+             data = Global_centrality_df_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Global_model_1.rds"
+             )
+```
+
+# Kfold global model 1
+```{r}
+kfold_global_model_1 <- brms::kfold(Global_model_1, K = 5)
+```
+
+
+# Global model 2
+```{r}
+Global_model_2 <- brm(Global2,
+             data = Global_centrality_df_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Global_model_2.rds"
+             )
+```
+
+# Kfold global model 2
+```{r}
+kfold_global_model_2 <- brms::kfold(Global_model_2, K = 5)
+```
+
+
+# Global model 3
+```{r}
+Global_model_3_random <- brm(Global3,
+             data = Global_centrality_df_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors_random,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Global_model_3_random.rds"
+             )
+```
+
+# Kfold global model 3
+```{r}
+#kfold_global_model_3_random <- brms::kfold(Global_model_3_random, K = 5)
+```
+
+
+# Global model 4
+```{r}
+Global_model_4_random <- brm(Global4,
+             data = Global_centrality_df_t2,
+             family = bernoulli,
+             backend = "cmdstanr",
+             prior = model_priors_random,
+             sample_prior = T,
+             iter = 1000,
+             warmup = 500,
+             cores = cores,
+             chains = chains,
+             seed = seed,
+             threads = threading(2),
+             stan_model_args = list(stanc_options = list("O1")),
+             file = "../Models/Global_model_4_random.rds"
+             )
+```
+
+# Kfold global model 4
+```{r}
+#kfold_global_model_4_random <- brms::kfold(Global_model_4_random, K = 5)
+```
+

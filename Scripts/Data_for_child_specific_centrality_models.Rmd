@@ -1,0 +1,172 @@
+---
+title: "Data_cleaning_for_models_v2"
+author: "Tilde Sloth"
+date: "2023-11-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Loading packages
+```{r}
+pacman::p_load(tidyverse)
+```
+
+# Loading data for child specific centrality models
+```{r}
+metadata <- read_csv(file = "../Data/Cleaned_USA.csv", )
+semantics <- read_csv(file = "../Data/Lexcial_information/SEMANTIC_time_1.csv")
+phonological <- read_csv(file = "../Data/Lexcial_information/PHONETIC_time_1.csv")
+word_length <- read_csv(file = "../Data/Lexcial_information/WORD_LENGTH_time_1.csv")
+
+```
+
+# Rename value
+```{r}
+semantics <- semantics %>% 
+    rename(Semantic_centrality = value) %>% 
+    select(Child_ID,
+           item_definition,
+           Semantic_centrality)
+
+phonological <- phonological %>% 
+    rename(Phonological_centrality = value) %>% 
+    select(Child_ID, 
+           item_definition, 
+           Phonological_centrality)
+
+word_length <- word_length %>% 
+    rename(Word_length_centrality = value) %>% 
+    select(Child_ID, 
+           item_definition, 
+           Word_length_centrality)
+
+metadata <- metadata %>% 
+    rename(Child_ID = child_id,
+           Knows_Word = value) %>% 
+    select(Child_ID, 
+           age, 
+           item_definition, 
+           Knows_Word,birth_order, 
+           caregiver_education, 
+           sex)
+
+```
+
+# Merge that shit
+```{r}
+Centrality_DF <- merge(x = semantics, y = phonological, by = c("Child_ID", "item_definition"))
+Centrality_DF <- merge(x = Centrality_DF, y = word_length, by = c("Child_ID", "item_definition"))
+Centrality_DF <- merge(x = Centrality_DF, y = metadata, by = c("Child_ID", "item_definition"))
+
+
+rm(phonological, semantics, word_length)
+```
+
+# Adding time point column 
+```{r}
+Timepoint_data <- Centrality_DF %>% 
+    group_by(Child_ID) %>% 
+    distinct(age)%>%
+    arrange(Child_ID, age)%>%
+    mutate(Timepoint = rank(age))
+
+Centrality_DF <- merge(x = Centrality_DF, y = Timepoint_data, by = c("Child_ID", "age"))
+
+```
+
+# Simplyfying the data by assuming that all words learned at t1 will also be learned at t2 (even though there are exceptions)
+```{r}
+#Only interested in t1 and t2 for now
+Centrality_DF <- Centrality_DF %>% 
+    filter(Timepoint == 1 | Timepoint == 2)
+
+# First, create a data frame of known words at timepoint 1
+known_at_timepoint_1 <- Centrality_DF %>%
+  filter(Timepoint == 1 & Knows_Word == 1) %>%
+  select(Child_ID, item_definition) # Keep only the necessary columns
+
+# Making sure there are no duplicates
+known_at_timepoint_1 <- known_at_timepoint_1 %>%
+  distinct(Child_ID, item_definition, .keep_all = TRUE)
+
+# Create a data frame of known words at timepoint 2
+known_at_timepoint_2 <- Centrality_DF %>%
+  filter(Timepoint == 2 & Knows_Word == 1) %>%
+  select(Child_ID, item_definition) # Keep only the necessary columns
+
+# Making sure there are no duplicates
+known_at_timepoint_2 <- known_at_timepoint_2 %>%
+  distinct(Child_ID, item_definition, .keep_all = TRUE)
+
+# Figuring out which words are known at t1 but not at t2 so we can check if it works later on
+words_known_at_1_not_at_2 <- anti_join(known_at_timepoint_1, known_at_timepoint_2, 
+                                       by = c("Child_ID", "item_definition"))
+
+# Overwriting t2 to knows_word = 1 when word is known at t1 
+Centrality_DF <- Centrality_DF %>% 
+  left_join(known_at_timepoint_1 %>% 
+              select(Child_ID, item_definition) %>% 
+              mutate(Knows_Word_at_2 = 1), by = c("Child_ID", "item_definition")) %>%
+  mutate(Knows_Word = ifelse(Timepoint == 2 & !is.na(Knows_Word_at_2), 1, Knows_Word)) %>%
+  select(-Knows_Word_at_2) # Removing the helper column
+
+```
+
+# Removing words that are known at t1 - so we don't try to predict the words the children already know
+```{r}
+# Step 1: Identify words known at both timepoints for each child
+words_known_at_both_timepoints <- Centrality_DF %>%
+  filter(Knows_Word == 1) %>%
+  group_by(Child_ID, item_definition) %>%
+  summarize(known_at_both = all(c(1, 2) %in% Timepoint)) %>%
+  filter(known_at_both) %>%
+  ungroup()
+
+# Step 2: Remove these words for each child
+Centrality_DF_not_known_t1 <- Centrality_DF %>%
+  # Performing a left anti join to exclude rows that match in words_known_at_both_timepoints
+  anti_join(words_known_at_both_timepoints, by = c("Child_ID", "item_definition"))
+
+```
+
+# Removing t1
+```{r}
+Centrality_DF_t2 <- Centrality_DF_not_known_t1 %>% 
+    filter(Timepoint == 2)
+
+# Remove duplicates based on all columns
+Centrality_DF_t2 <- Centrality_DF_t2 %>% distinct()
+
+write.csv(Centrality_DF_t2, "../Data/Centrality_DF_t2_updated.csv")
+```
+
+# Splitting the model in train and test data based on group = Child_ID (no children in the both sets)
+```{r}
+# Splitting based on child_id
+set.seed(123)
+
+# Group by 'child' and then use group_split
+grouped_data <- Centrality_DF_t2 %>% group_by(Child_ID)
+
+# Get unique groups (children)
+children <- grouped_data %>% group_keys()
+
+# Sample the groups
+train_child <- sample(children$Child_ID, size = round(nrow(children) * 0.8))
+
+# Split the data based on sampled groups
+train_data <- grouped_data %>% filter(Child_ID %in% train_child)
+test_data <- grouped_data %>% filter(!(Child_ID %in% train_child))
+
+# Ungroup and create final datasets
+Centrality_t2_training <- train_data %>% ungroup()
+Centrality_t2_test <- test_data %>% ungroup()
+
+#save
+write.csv(Centrality_t2_training, "../Data/Centrality_t2_training_updated.csv")
+write.csv(Centrality_t2_test, "../Data/Centrality_t2_test_updated.csv")
+```
