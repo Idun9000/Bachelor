@@ -254,6 +254,7 @@ Child_model_4_random <- brm(Child4,
 # Kfold child model 4
 ```{r}
 #kfold_child_model_4_random <- brms::kfold(Child_model_4_random, K = 5)
+#saveRDS(kfold_child_model_4_random, "../Models/kfold_child_model_4_random.rds")
 ```
 
 
@@ -279,7 +280,9 @@ Global_model_1 <- brm(Global1,
 
 # Kfold global model 1
 ```{r}
-kfold_global_model_1 <- brms::kfold(Global_model_1, K = 5)
+#kfold_global_model_1 <- brms::kfold(Global_model_1, K = 5)
+#saveRDS(kfold_global_model_1, "../Models/kfold_global_model_1.rds")
+
 ```
 
 
@@ -304,7 +307,8 @@ Global_model_2 <- brm(Global2,
 
 # Kfold global model 2
 ```{r}
-kfold_global_model_2 <- brms::kfold(Global_model_2, K = 5)
+# kfold_global_model_2 <- brms::kfold(Global_model_2, K = 5)
+# saveRDS(kfold_global_model_2, "../Models/kfold_global_model_2.rds")
 ```
 
 
@@ -330,6 +334,7 @@ Global_model_3_random <- brm(Global3,
 # Kfold global model 3
 ```{r}
 #kfold_global_model_3_random <- brms::kfold(Global_model_3_random, K = 5)
+#saveRDS(kfold_global_model_3_random, "../Models/kfold_global_model_3_random.rds")
 ```
 
 
@@ -355,5 +360,6 @@ Global_model_4_random <- brm(Global4,
 # Kfold global model 4
 ```{r}
 #kfold_global_model_4_random <- brms::kfold(Global_model_4_random, K = 5)
+#saveRDS(kfold_global_model_4_random, "../Models/kfold_global_model_4_random.rds")
 ```
 
