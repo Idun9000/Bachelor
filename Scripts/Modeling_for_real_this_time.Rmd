@@ -179,6 +179,10 @@ Child_model_1 <- brm(Child1,
 ```{r}
 #kfold_child_model_1 <- brms::kfold(Child_model_1, K = 5)
 #saveRDS(kfold_child_model_1, "../Models/kfold_child_model_1.rds")
+
+kfold_child_model_1 <-  readRDS("../Models/kfold_child_model_1.rds")
+
+print(kfold_child_model_1)
 ```
 
 
@@ -205,6 +209,10 @@ Child_model_2 <- brm(Child2,
 ```{r}
 #kfold_child_model_2 <-  brms::kfold(Child_model_2, K = 5)
 #saveRDS(kfold_child_model_2, "../Models/kfold_child_model_2.rds")
+
+kfold_child_model_2 <-  readRDS("../Models/kfold_child_model_2.rds")
+
+print(kfold_child_model_2)
 ```
 
 
@@ -230,6 +238,10 @@ Child_model_3_random <- brm(Child3,
 ```{r}
 #kfold_child_model_3_random <- brms::kfold(Child_model_3_random, K = 5)
 #saveRDS(kfold_child_model_3_random, "../Models/kfold_child_model_3_random.rds")
+
+kfold_child_model_3_random <-  readRDS("../Models/kfold_child_model_3_random.rds")
+
+print(kfold_child_model_3_random)
 ```
 
 
@@ -255,6 +267,10 @@ Child_model_4_random <- brm(Child4,
 ```{r}
 #kfold_child_model_4_random <- brms::kfold(Child_model_4_random, K = 5)
 #saveRDS(kfold_child_model_4_random, "../Models/kfold_child_model_4_random.rds")
+
+kfold_child_model_4_random <-  readRDS("../Models/kfold_child_model_4_random.rds")
+
+print(kfold_child_model_4_random)
 ```
 
 
@@ -276,6 +292,8 @@ Global_model_1 <- brm(Global1,
              stan_model_args = list(stanc_options = list("O1")),
              file = "../Models/Global_model_1.rds"
              )
+
+
 ```
 
 # Kfold global model 1
@@ -283,6 +301,9 @@ Global_model_1 <- brm(Global1,
 #kfold_global_model_1 <- brms::kfold(Global_model_1, K = 5)
 #saveRDS(kfold_global_model_1, "../Models/kfold_global_model_1.rds")
 
+kfold_global_model_1 <-  readRDS("../Models/kfold_global_model_1.rds")
+
+print(kfold_global_model_1)
 ```
 
 
@@ -309,6 +330,10 @@ Global_model_2 <- brm(Global2,
 ```{r}
 # kfold_global_model_2 <- brms::kfold(Global_model_2, K = 5)
 # saveRDS(kfold_global_model_2, "../Models/kfold_global_model_2.rds")
+
+kfold_global_model_2 <-  readRDS("../Models/kfold_global_model_2.rds")
+
+print(kfold_global_model_2)
 ```
 
 
@@ -335,6 +360,10 @@ Global_model_3_random <- brm(Global3,
 ```{r}
 #kfold_global_model_3_random <- brms::kfold(Global_model_3_random, K = 5)
 #saveRDS(kfold_global_model_3_random, "../Models/kfold_global_model_3_random.rds")
+
+kfold_global_model_3_random<-  readRDS("../Models/kfold_global_model_3_random.rds")
+
+print(kfold_global_model_3_random)
 ```
 
 
@@ -361,5 +390,9 @@ Global_model_4_random <- brm(Global4,
 ```{r}
 #kfold_global_model_4_random <- brms::kfold(Global_model_4_random, K = 5)
 #saveRDS(kfold_global_model_4_random, "../Models/kfold_global_model_4_random.rds")
+
+kfold_global_model_4_random<-  readRDS("../Models/kfold_global_model_4_random.rds")
+
+print(kfold_global_model_4_random)
 ```
 
