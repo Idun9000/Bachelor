@@ -39,139 +39,10 @@ PSYCHOLING_STRING <- list("SEMANTIC", "PHONETIC", "WORD_LENGTH")
 ```
 
 
-# Define Functions
-## Create a function that defines a adjacency matrix of words known for a unique child at unique timepoint
-```{r}
-Remove_Self_Edges <- function(Subset_dataframe, Is_word_know_collumn_name, Word_string_collumn_name){
-# Remove edges between words that are connected to themselves 
-    ID_MATRIX <- diag(length(KNOWN_WORDS_IDENTIFICATION_MATRIX[1,])) # Create a identity matrix of length(adjaceny_matrix)
-    REMOVE_SELF_EDGES <- KNOWN_WORDS_IDENTIFICATION_MATRIX*ID_MATRIX # Create a matrix that has a 1 if the word triggers an edge with itself.
-    KNOWN_WORDS_IDENTIFICATION_MATRIX <- KNOWN_WORDS_IDENTIFICATION_MATRIX - REMOVE_SELF_EDGES # Remove self edges from known words matrix
-    return(KNOWN_WORDS_IDENTIFICATION_MATRIX)   
-}
-```
-
-
-
-
-## Use Known_words_matrix to create a personalized ADJ_MATRIX for a linguistic adj matrix 
-```{r}
-FUNC_Personalised_ling_adj_matrix <- function(Personalized_Matrix, Linguistic_Matrix){
-    #' This function takes two equally sized matrix' and multiplies them, this results in only edges between words known to the child being saved.
-    Personalized_Linguistic_Matrix <- Personalized_Matrix * Linguistic_Matrix
-    return(Personalized_Linguistic_Matrix)}
-
-FUNC_Get_adj_matrix_merged <- function(
-        List_of_subsets,
-        Is_word_know_collumn_name,
-        Word_string_collumn_name,
-        Linguistic_Matrix)
-    {
-    # NEEDS: List_of_subsets, Is_word_know_collumn_name, Word_string_collumn_name,
-    # Make adj matrix' (0.80 seconds at subset -> 8.02 seconds at full dataset)
-    List_of_personalized_adj_matrix <- purrr::map(
-        .x = List_of_subsets,
-        .f = FUNC_Get_known_words_matrix,
-        Subset_dataframe = , #left empty to show .x map value
-        Is_word_know_collumn_name =  Is_word_known_collumn_name,
-        Word_string_collumn_name = Word_string_collumn_name)
-    
-    # NEEDS EDGE MATRIX AND PERSONAL MATRIX
-    # Convert the personalized matrix to a linguistically corrected matrix (0.223 seconds)
-    List_of_personalized_adj_matrix <- purrr::map(
-        .x = List_of_personalized_adj_matrix, 
-        .f = FUNC_Personalised_ling_adj_matrix,
-        Personalized_Matrix = ,#left empty to show .x map value
-        Linguistic_Matrix = Linguistic_Matrix)
-    
-    return(List_of_personalized_adj_matrix)
-}
-```
-
-# Get known words
-```{r}
-FUNC_Create_a_Graph_And_Remove_unknown_words <- function(Subset_dataframe,
-                                                         Personalized_Adj_Linguistic_Matrix,
-                                                         Is_word_know_collumn_name, 
-                                                         Word_string_collumn_name){
-    #' Requires IGRAPH package
-    GRAPH_OBJECT <- graph_from_adjacency_matrix(Personalized_Adj_Linguistic_Matrix, mode = "undirected")
-    NAMES_TO_REMOVE <- FUNC_Subset(dataframe = Subset_dataframe,
-                column_name = Is_word_know_collumn_name,
-                true_value = 0)
-    NAMES_TO_REMOVE <- NAMES_TO_REMOVE[[Word_string_collumn_name]]
-    VERTICES_TO_REMOVE <- which(V(GRAPH_OBJECT)$name %in% NAMES_TO_REMOVE)
-    GRAPH_OBJECT <-  delete.vertices(GRAPH_OBJECT, VERTICES_TO_REMOVE)
-    return(GRAPH_OBJECT)
-}
-```
-
-## Create a function that duplicate your graph in a named list for each 
-```{r}
-FUNC_Tranform_graph_to_list_of_graphs <-  function(GRAPH_OBJECT, KNOWN_WORDS_STRING){
-    NESTED_GRAPH <- list(GRAPH_OBJECT) # Wrap list to allow for rep
-    LIST_OF_GRAPHS <- rep(NESTED_GRAPH,length(KNOWN_WORDS_STRING)) # Repeat list 618 times
-    names(LIST_OF_GRAPHS) <-  KNOWN_WORDS_STRING # Name the graphs
-    return(LIST_OF_GRAPHS)
-}
-```
-
-## Create a function that adds a new word and its edges to the graph
-```{r}
-
-FUNC_Add_new_word_to_graph <- function(GRAPH_OBJECT, NEW_WORD_STRING, ADJ_MATRIX){
-    if (NEW_WORD_STRING %in% V(GRAPH_OBJECT)$name){
-        return(GRAPH_OBJECT)
-    }
-    
-    VECTOR_OF_NAMES <- colnames(ADJ_MATRIX) # GET A VECTOR OF STRING TO BE ABLE TO which(vector == "value"), as matrix[,"x"] breaks with certain strings
-    ### Only pick the semantic edges for NEW_WORD_STRING
-    EDGES <- ADJ_MATRIX[,which(VECTOR_OF_NAMES == NEW_WORD_STRING)]
-    
-    ### Save verticies (words) from graph:
-    VERTICES_IN_GRAPH <- V(GRAPH_OBJECT)$name
-    
-    
-    NAMED_EDGES_OF_VERTICIES <- EDGES[names(EDGES) %in% VERTICES_IN_GRAPH]
-    EDGES_OF_VERTICIES <- names(NAMED_EDGES_OF_VERTICIES[which(NAMED_EDGES_OF_VERTICIES==1)])
-    
-    #Make df into a string again
-    EDGE_LIST <- c(
-        rbind( # Bind NEW_WORD_STRING before each edge
-            NEW_WORD_STRING,EDGES_OF_VERTICIES))
-    
-    
-    if (length(EDGE_LIST) > 1){
-        GRAPH_OBJECT <- GRAPH_OBJECT + 
-            NEW_WORD_STRING + #insert vertice without edges
-            edges(EDGE_LIST) #add edges from vertice to other vertices
-    } else {
-        GRAPH_OBJECT <- GRAPH_OBJECT + NEW_WORD_STRING
-    }
-    
-    return(GRAPH_OBJECT)
-}
-
-## NESTED VERSION
-# Return_list_of_updated <- imap(List_of_List_of_Graphs[[1]], FUNC_nested_add_word_to_graph_for_imap, MATRIX = SEMANTIC_EDGES_MATRIX)
-FUNC_nested_add_word_to_graph_for_imap <- function(igraph_object, index, MATRIX) {
-    #' Add the new word to the igraph
-    igraph_object <- FUNC_Add_new_word_to_graph(
-        GRAPH_OBJECT = igraph_object,
-        NEW_WORD_STRING = index,
-        ADJ_MATRIX = MATRIX)
-    return(igraph_object)  # You can return the modified graph or any other result
-}
-
-
-
-
-```
-
 # Run Functions
 ## Set variables
 ```{r}
-Child_Dataframe <-  Child_Dataframe # The dataset that contains all information regarding the children, CURRENTLY subset.
+
 ID_collumn_name <- "child_id"
 Age_collumn_name <- "age"
 Word_string_collumn_name = "item_definition"
@@ -179,35 +50,10 @@ Word_numeric_column_name = "item_id"
 Is_word_known_collumn_name = "value"
 ```
 
-### Set Lists of subsets:
-```{r}
-Unique_Children <- FUNC_Get_List_Of_Unique_Child_ID(Child_Dataframe, ID_collumn_name)
-# List of subsets
-List_of_subsets <- as.list(setNames(Unique_Children, Unique_Children))
-
-# Time specific versions
-List_of_subsets_t1 <- purrr::map(
-   .x =  List_of_subsets, 
-   .f = FUNC_Subset_child_at_first_unique_age,
-   dataframe = Child_Dataframe,
-   ID_collumn_name = ID_collumn_name,
-   Age_collumn_name = Age_collumn_name,
-   ID_String = ) #Nothing defined here to show that the map .x map value is used
-List_of_subsets_t2 <- purrr::map(
-   .x =  List_of_subsets, 
-   .f = FUNC_Subset_child_at_second_unique_age,
-   dataframe = Child_Dataframe,
-   ID_collumn_name = ID_collumn_name,
-   Age_collumn_name = Age_collumn_name,
-   ID_String = ) #Nothing defined here to show that the map .x map value is used
-
-List_of_list_of_subsets <- list(List_of_subsets_t1, List_of_subsets_t2)
-```
-
 
 ```{r}
 KNOWN_WORDS_NUMERIC <- unique(Child_Dataframe[[Word_numeric_column_name]]) 
-KNOWN_WORDS_STRING <-  unique(Child_Dataframe[[Word_string_collumn_name]]) 
+KNOWN_WORDS_STRING <-  unique(colnames(SEMANTIC_EDGES_MATRIX)) 
 KNOWN_WORDS_STRING[75] <- "breaks" # Changed from break to avoid making funcitons stop
 ```
 
@@ -221,34 +67,10 @@ Running_all_functions <- function(
         Timepoint,
         PSY_NAME){
     #' First function
-        List_of_personalized_adj_matrix <- FUNC_Get_adj_matrix_merged(
-            List_of_subsets = List_of_subsets,
-            Is_word_know_collumn_name =  Is_word_known_collumn_name,
-            Word_string_collumn_name = Word_string_collumn_name,
-            Linguistic_Matrix = Linguistic_Matrix)
-    #' Second function
-        List_of_graphs <- purrr::map2(
-            .x = List_of_subsets,
-            .y = List_of_personalized_adj_matrix,
-            .f = FUNC_Create_a_Graph_And_Remove_unknown_words,
-            Is_word_know_collumn_name = Is_word_known_collumn_name,
-            Word_string_collumn_name =  Word_string_collumn_name,
-            Subset_dataframe = )#This is where .x parameter goes
-    #' Third function
-        List_of_List_of_graphs <- purrr::map(
-            .x = List_of_graphs,
-            .f = FUNC_Tranform_graph_to_list_of_graphs,
-            GRAPH_OBJECT = ,#This is where .x parameter goes
-            KNOWN_WORDS_STRING = KNOWN_WORDS_STRING)
-        
-    #' Fourth function
-        List_of_List_of_graphs <- purrr::map(.x = List_of_List_of_graphs,.f =  function(inner_list) {
-            imap(
-                .x = inner_list,
-                .f =  FUNC_nested_add_word_to_graph_for_imap, 
-                MATRIX = Linguistic_Matrix)})
+        Matrix <- Matrix
         
     #' Fifth function
+        List_of_centrality_XD <- purrr::map()
         List_of_centrality <-  purrr::map(List_of_List_of_graphs, function(inner_list) {
             imap(inner_list, function(graph_object, index){
                 eigen_centrality(graph_object, directed = FALSE)$vector[index] })}) # CHANGE HERE FOR DIFFERENT CENTRALITY MEASSUREMENT
@@ -288,6 +110,24 @@ for (i in 1:length(PSYCHOLING_EDGE_MATRICES)){
 
 
 
+```{r}
+
+Semantics_Graph <- graph_from_adjacency_matrix(SEMANTIC_EDGES_MATRIX)
+Semantic <- igraph:::eigen_centrality(graph = Semantics_Graph)
+Phonetic_Graph <- graph_from_adjacency_matrix(PHONETIC_EDGES_MATRIX)
+Phonetic <- igraph:::eigen_centrality(graph = Phonetic_Graph)
+Word_length_Graph <- graph_from_adjacency_matrix(WORD_LENGTH_EDGES_MATRIX)
+Word_length <- igraph:::eigen_centrality(graph = Word_length_Graph)
+
+Global_centrality_df <- data_frame(item_definition = names(Semantic[[1]]), 
+           Semantic = Semantic[[1]],
+           Phonetic = Phonetic[[1]],
+           Word_length = Word_length[[1]]
+           )
+
+
+write.csv(x = Global_centrality_df, file = "../Data/Global_centrality.csv")
+```
 
 
 
