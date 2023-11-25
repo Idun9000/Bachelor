@@ -185,6 +185,16 @@ kfold_child_model_1 <-  readRDS("../Models/kfold_child_model_1.rds")
 print(kfold_child_model_1)
 ```
 
+# Kfold child model 1 - strat
+```{r}
+kfold_child_model_1_strat <- brms::kfold(Child_model_1, K = 5, folds = "stratify", group = "Child_ID")
+#saveRDS(kfold_child_model_1_strat, "../Models/kfold_child_model_1_strat.rds")
+
+# kfold_child_model_1 <-  readRDS("../Models/kfold_child_model_1.rds")
+# 
+# print(kfold_child_model_1)
+```
+
 
 # Child model 2
 ```{r}
