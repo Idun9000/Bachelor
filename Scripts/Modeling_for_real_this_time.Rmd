@@ -183,17 +183,9 @@ Child_model_1 <- brm(Child1,
 kfold_child_model_1 <-  readRDS("../Models/kfold_child_model_1.rds")
 
 print(kfold_child_model_1)
+
 ```
 
-# Kfold child model 1 - strat
-```{r}
-kfold_child_model_1_strat <- brms::kfold(Child_model_1, K = 5, folds = "stratify", group = "Child_ID")
-#saveRDS(kfold_child_model_1_strat, "../Models/kfold_child_model_1_strat.rds")
-
-# kfold_child_model_1 <-  readRDS("../Models/kfold_child_model_1.rds")
-# 
-# print(kfold_child_model_1)
-```
 
 
 # Child model 2
@@ -217,12 +209,42 @@ Child_model_2 <- brm(Child2,
 
 # Kfold child model 2
 ```{r}
-#kfold_child_model_2 <-  brms::kfold(Child_model_2, K = 5)
-#saveRDS(kfold_child_model_2, "../Models/kfold_child_model_2.rds")
+# kfold_child_model_2 <-  brms::kfold(Child_model_2, K = 5, save_fits = TRUE)
+# saveRDS(kfold_child_model_2, "../Models/kfold_child_model_2.rds")
 
 kfold_child_model_2 <-  readRDS("../Models/kfold_child_model_2.rds")
 
 print(kfold_child_model_2)
+
+child2_posterior <- kfold_predict(kfold_child_model_2, method = c("predict", "fitted"), resp = NULL)
+```
+
+# rmse child model 2
+```{r}
+# define a loss function
+rmse <- function(y, yrep) {
+  yrep_mean <- colMeans(yrep)
+  sqrt(mean((yrep_mean - y)^2))
+}
+
+#child2_posterior <- kfold_predict(kfold_child_model_2, method = c("predict", "fitted"), resp = NULL)
+
+# predict responses and evaluate the loss
+rmse(y = child2_posterior$y, yrep = child2_posterior$yrep)
+```
+# accuracy child model 2
+```{r}
+predictions <- child2_posterior$yrep
+true_labels <- child2_posterior$y 
+
+# Convert predictions to binary labels if necessary (e.g., if using a logistic regression model)
+predicted_labels <- ifelse(predictions > 0.5, 1, 0)  
+
+# Calculate accuracy for each fold
+accuracy <- mean(predicted_labels == true_labels)
+
+# Print overall accuracy
+print(accuracy)
 ```
 
 
@@ -338,12 +360,36 @@ Global_model_2 <- brm(Global2,
 
 # Kfold global model 2
 ```{r}
-# kfold_global_model_2 <- brms::kfold(Global_model_2, K = 5)
-# saveRDS(kfold_global_model_2, "../Models/kfold_global_model_2.rds")
+#kfold_global_model_2 <- brms::kfold(Global_model_2, K = 5, save_fits = TRUE)
+#saveRDS(kfold_global_model_2, "../Models/kfold_global_model_2.rds")
 
 kfold_global_model_2 <-  readRDS("../Models/kfold_global_model_2.rds")
 
 print(kfold_global_model_2)
+```
+
+# rmse global model 2
+```{r}
+global2_posterior <- kfold_predict(kfold_global_model_2, method = c("predict", "fitted"), resp = NULL)
+
+# predict responses and evaluate the loss
+rmse(y = global2_posterior$y, yrep = global2_posterior$yrep)
+```
+
+
+# accuracy global model 2
+```{r}
+predictions2 <- global2_posterior$yrep
+true_labels2 <- global2_posterior$y 
+
+# Convert predictions to binary labels if necessary (e.g., if using a logistic regression model)
+predicted_labels2 <- ifelse(predictions2 > 0.5, 1, 0)  
+
+# Calculate accuracy for each fold
+accuracy2 <- mean(predicted_labels2 == true_labels2)
+
+# Print overall accuracy
+print(accuracy2)
 ```
 
 
