@@ -1,0 +1,146 @@
+---
+title: "loo"
+author: "Laurits & Iduhn"
+date: "2023-11-28"
+output: html_document
+---
+
+# Loading packages
+```{r}
+pacman::p_load(tidyverse, brms, rsample, yardstick, rsample, posterior)
+```
+
+# Loading data for global centrality
+```{r}
+Global_centrality_df_t2 <- read_csv("../Data/Global_centrality_df_t2_updated.csv")
+```
+
+# Loading data for child_specific centrality
+```{r}
+Centrality_DF_t2 <- read_csv("../Data/Centrality_DF_t2_updated.csv")
+```
+
+# Adding ordered factors
+```{r}
+education_levels<- c("Some Secondary", "Secondary", "Some College", "College", "Some Graduate", "Graduate")
+Global_centrality_df_t2 <- Global_centrality_df_t2 %>% 
+    mutate(age = factor(age,
+                        ordered = TRUE, 
+                        levels = sort(unique(age))),
+           caregiver_education = factor(caregiver_education,
+                                        ordered = TRUE,
+                                        levels = education_levels))
+
+Centrality_DF_t2 <- Centrality_DF_t2 %>% 
+    mutate(age = factor(age,
+                        ordered = TRUE, 
+                        levels = sort(unique(age))),
+           caregiver_education = factor(caregiver_education,
+                                        ordered = TRUE,
+                                        levels = education_levels))
+
+```
+
+# Setting priors
+```{r}
+#Model priors
+intercept_priors <- c(
+    prior(normal(0, 3), class = Intercept)
+)
+
+#Model priors
+model_priors <- c(
+    prior(normal(0, 3), class = b),
+    prior(normal(0, 3), class = Intercept)
+)
+
+```
+
+# Setting model variables 
+```{r}
+cores <- parallel::detectCores()
+chains <- 2
+seed <- 123
+```
+
+# Models
+---
+```{r}
+Intercept_model<- brm(Intercept,
+                      data = Centrality_DF_t2,
+                      family = bernoulli,
+                      backend = "cmdstanr",
+                      prior = intercept_priors,
+                      sample_prior = T,
+                      iter = 1000,
+                      warmup = 500,
+                      cores = cores,
+                      chains = chains,
+                      seed = seed,
+                      threads = threading(2),
+                      stan_model_args = list(stanc_options = list("O1")),
+                      file = "../Models/Intercept.rds")
+
+
+Child_model <- brm(Child,
+                         data = Centrality_DF_t2,
+                         family = bernoulli,
+                         backend = "cmdstanr",
+                         prior = model_priors,
+                         sample_prior = T,
+                         iter = 1000,
+                         warmup = 500,
+                         cores = cores,
+                         chains = chains,
+                         seed = seed,
+                         threads = threading(2),
+                         stan_model_args = list(stanc_options = list("O1")),
+                         file = "../Models/Child_unique.rds"
+                        )
+                        
+Global_model <- brm(Global, 
+                    data = Global_centrality_df_t2,
+                    family = bernoulli,
+                    backend = "cmdstanr",
+                    prior = model_priors,
+                    sample_prior = T, 
+                    iter = 1000,
+                    warmup = 500,
+                    cores = cores,
+                    chains = chains,
+                    seed = seed,
+                    threads = threading(2),
+                    stan_model_args = list(stanc_options = list("O1")),
+                    file = "../Models/Child_Global.rds"
+)
+
+```
+
+# Create loos
+```{r}
+# intercept_loo <- loo(Intercept_model, save_psis = TRUE)
+intercept_loo <- readRDS(file = "../Models/intercept_loo.rds")
+intercept_loo
+```
+
+
+```{r}
+# Child_model_loo <- loo(Child_model, save_psis = TRUE)
+Child_model_loo <- readRDS(file = "../Models//Child_model_loo.rds")
+Child_model_loo
+```
+
+
+```{r}
+# Global_model_loo <- loo(Global_model, save_psis = TRUE)
+Global_model_loo <- readRDS(file = "../Models/Global_model_loo.rds")
+Global_model_loo
+```
+
+# Save files
+```{r}
+# saveRDS(Global_model_loo, "../Models/Global_model_loo.rds")
+# saveRDS(Child_model_loo, "../Models/Child_model_loo.rds")
+# saveRDS(intercept_loo, "../Models/intercept_loo.rds")
+```
+
