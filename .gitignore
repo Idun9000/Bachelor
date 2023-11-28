@@ -4,3 +4,6 @@
 .Ruserdata
 Local_Files/
 Data/Cleaned_USA.csv
+Models/Child_model_loo.rds
+Models/Global_model_loo.rds
+Models/intercept_loo.rds
