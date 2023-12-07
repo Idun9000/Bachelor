@@ -183,7 +183,6 @@ Mixed_model <- brm(Mixed,
                    stan_model_args = list(stanc_options = list("O1")),
                    file = "../Models/Mixed_child_and_global.rds"
 )
-pp_check(Child_model, nsamples = 100)
 
 ```
 
@@ -275,11 +274,6 @@ saveRDS(Mixed_model_kfold, "../Models/Mixed_model_kfold.rds")
 
 ```
 
-
-
-
-
-
 # Check accuracy:
 ```{r}
 Global_predict <- kfold_predict(x = Global_model_kfold, method = c("predict"))
@@ -347,12 +341,13 @@ mean(result_vector)
 ```{r}
 predicted_responses_child <- posterior_predict(Child_model)
 predictions_list_child <- predicted_responses_child
+length(predictions_list_child)
 
-mean_predicts_child <- sapply(1:length(predictions_list), function(i) {
-  mean(predictions_list[, i])
+mean_predicts_child <- sapply(1:length(predictions_list_child)/1000, function(i) {
+  mean(predictions_list_child[, i]
 })
 
-mean_predicts_child
+mean_predicts_child 
 overview_of_sim <- cbind(Centrality_DF_t2,mean_predicts_child)
 ```
 
@@ -361,7 +356,7 @@ predicted_responses <- posterior_predict(Global_model)
 predictions_list <- predicted_responses
 
 
-mean_predicts <- sapply(1:length(predictions_list), function(i) {
+mean_predicts <- sapply(1:length(predictions_list)/1000, function(i) {
   mean(predictions_list[, i])
 })
 
@@ -375,7 +370,6 @@ cor.test(overview_of_sim$Semantic_centrality, overview_of_sim_global$Semantic, c
 cor.test(overview_of_sim$Phonological_centrality, overview_of_sim_global$Phonetic, conf.level = 0.95)
 cor.test(overview_of_sim$Word_length_centrality, overview_of_sim_global$Word_length, conf.level = 0.95)
 
-
 cor.test(overview_of_sim$mean_predicts, overview_of_sim_global$mean_predicts, conf.level = 0.95)
 
 wowsie <- data.frame(Child = overview_of_sim$mean_predicts, 
@@ -384,6 +378,24 @@ wowsie <- data.frame(Child = overview_of_sim$mean_predicts,
 ```
 
 
+
+# Correlation matrix
+```{r}
+corr_matrix <- cbind(Global_centrality_df_t2, Centrality_DF_t2)
+corr_matrix <- corr_matrix %>% 
+    select(`Global semantics` = Semantic,
+           `Child-specific semantics` = Semantic_centrality,
+           `Global phonetics` = Phonetic,
+           `Child-specific phonetics` = Phonological_centrality,
+           `Global word length` = Word_length,
+           `Child-specific word length` = Word_length_centrality)
+
+
+corr_matrix <- (round(cor(corr_matrix), digits = 2))
+pacman::p_load(corrplot)
+col <- colorRampPalette(c("#4477AA", "#77AADD", "#FFFFFF", "#EE9988", "#BB4444"))
+corrplot(corr_matrix, method = "shade", shade.col = NA, tl.col = "black", tl.srt = 45,col = col(200), addCoef.col = "black", cl.pos = "n")
+```
 
 
 

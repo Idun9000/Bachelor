@@ -99,7 +99,7 @@ Summary_of_phonetics <- as.data.frame(summary(ADJ_PHONETIC_DISTANCE))[,2:3] %>%
 
 # Filter for the 3rd quantile of each row
 q1_phonetics <- Summary_of_phonetics %>% 
-     filter(Summary_Name == "1st Qu.")
+     filter(Summary_Name == "3rd Qu.")
 
 # Find the mean 3rd quantile value
 mean_of_q1 <- mean(q1_phonetics$Summary_Number)
