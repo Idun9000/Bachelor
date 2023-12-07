@@ -57,6 +57,21 @@ graph_object <- igraph::graph_from_adjacency_matrix(adjacency_matrix)
 ```
 
 
+
+```{r}
+plot(graph_object)
+```
+
+
+
+
+
+
+
+
+
+
+
 ### Find data for timepoint two
 ```{r}
 # Create vector of all child ID's
