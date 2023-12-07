@@ -7,18 +7,58 @@ output: html_document
 
 # Loading packages
 ```{r}
-pacman::p_load(tidyverse, brms, rsample, yardstick, rsample, posterior)
+pacman::p_load(tidyverse, brms, rsample, yardstick, rsample, posterior, loo)
+
 ```
 
 # Loading data for global centrality
 ```{r}
-Global_centrality_df_t2 <- read_csv("../Data/Global_centrality_df_t2_updated.csv")
+Global_centrality_df_t2 <- read_csv("../Data/Global_centrality_df_t2_updated.csv") %>%
+    arrange(item_definition) %>%
+    arrange(Child_ID) %>%
+    mutate(Mix_Unique = paste(Child_ID,item_definition))
 ```
 
 # Loading data for child_specific centrality
 ```{r}
-Centrality_DF_t2 <- read_csv("../Data/Centrality_DF_t2_updated.csv")
+Centrality_DF_t2 <- read_csv("../Data/Centrality_DF_t2_updated.csv") %>%
+    arrange(item_definition) %>%
+    arrange(Child_ID) %>% 
+    mutate(Mix_Unique = paste(Child_ID,item_definition))
 ```
+# Removing values WHERE we dont know i learned or not: (Quick fix)
+```{r}
+Mix_Unique_to_remove <- Centrality_DF_t2 %>%
+    mutate(Mix_Unique = paste(Child_ID,item_definition)) %>%
+    group_by(Mix_Unique) %>%
+    summarize(count=n()) %>%
+    arrange(desc(count)) %>%
+    filter(count == 2) %>%
+    select(-count)
+
+Global_centrality_df_t2 <- Global_centrality_df_t2 %>%
+    filter(!Mix_Unique %in% Mix_Unique_to_remove$Mix_Unique)
+
+Centrality_DF_t2 <- Centrality_DF_t2 %>%
+    filter(!Mix_Unique %in% Mix_Unique_to_remove$Mix_Unique)
+
+
+```
+
+
+
+
+
+
+
+```{r}
+# Creating mixed dataframe
+Mixed_centrality <- merge(x = Centrality_DF_t2,y = Global_centrality_df_t2,by = c("Child_ID", "item_definition"))
+
+
+```
+
+
 
 # Adding ordered factors
 ```{r}
@@ -41,6 +81,16 @@ Centrality_DF_t2 <- Centrality_DF_t2 %>%
 
 ```
 
+## Setting formula:
+```{r}
+Intercept <- brms::bf(Knows_Word ~ 1)
+Child <- brms::bf(Knows_Word ~ 1 + Semantic_centrality + Phonological_centrality + Word_length_centrality)
+Global <- brms::bf(Knows_Word ~ 1 + Semantic + Phonetic + Word_length )
+Mixed <- brms::bf(Knows_Word.x ~ 1 + Semantic_centrality + Phonological_centrality + Word_length_centrality + Semantic + Phonetic + Word_length)
+
+```
+
+
 # Setting priors
 ```{r}
 #Model priors
@@ -60,10 +110,13 @@ model_priors <- c(
 ```{r}
 cores <- parallel::detectCores()
 chains <- 2
-seed <- 123
+seed <- 1234
 ```
 
 # Models
+
+
+
 ---
 ```{r}
 Intercept_model<- brm(Intercept,
@@ -79,7 +132,7 @@ Intercept_model<- brm(Intercept,
                       seed = seed,
                       threads = threading(2),
                       stan_model_args = list(stanc_options = list("O1")),
-                      file = "../Models/Intercept.rds")
+                      file = "../Models/Intercept_2.rds")
 
 
 Child_model <- brm(Child,
@@ -114,33 +167,223 @@ Global_model <- brm(Global,
                     file = "../Models/Child_Global.rds"
 )
 
+
+Mixed_model <- brm(Mixed,
+                   data = Mixed_centrality,
+                   family = bernoulli,
+                   backend = "cmdstanr",
+                   prior = model_priors,
+                   sample_prior = T,
+                   iter = 1000,
+                   warmup = 500,
+                   cores = cores,
+                   chains = chains,
+                   seed = seed,
+                   threads = threading(2),
+                   stan_model_args = list(stanc_options = list("O1")),
+                   file = "../Models/Mixed_child_and_global.rds"
+)
+pp_check(Child_model, nsamples = 100)
+
 ```
 
 # Create loos
 ```{r}
-# intercept_loo <- loo(Intercept_model, save_psis = TRUE)
-intercept_loo <- readRDS(file = "../Models/intercept_loo.rds")
+intercept_loo <- loo(Intercept_model, save_psis = TRUE)
+# intercept_loo <- readRDS(file = "../Models/intercept_loo.rds")
 intercept_loo
 ```
 
 
 ```{r}
-# Child_model_loo <- loo(Child_model, save_psis = TRUE)
-Child_model_loo <- readRDS(file = "../Models//Child_model_loo.rds")
+Child_model_loo <- loo(Child_model, save_psis = TRUE)
+# Child_model_loo <- readRDS(file = "../Models//Child_model_loo.rds")
 Child_model_loo
 ```
 
 
 ```{r}
-# Global_model_loo <- loo(Global_model, save_psis = TRUE)
-Global_model_loo <- readRDS(file = "../Models/Global_model_loo.rds")
+Global_model_loo <- loo(Global_model, save_psis = TRUE)
+# Global_model_loo <- readRDS(file = "../Models/Global_model_loo.rds")
 Global_model_loo
 ```
+
+```{r}
+# Mixed_model_loo <- loo(Mixed_model, save_psis = TRUE)
+Mixed_model_loo <- readRDS(file = "../Models/Mixed_model.rds")
+Mixed_model_loo
+```
+
+
 
 # Save files
 ```{r}
 # saveRDS(Global_model_loo, "../Models/Global_model_loo.rds")
 # saveRDS(Child_model_loo, "../Models/Child_model_loo.rds")
 # saveRDS(intercept_loo, "../Models/intercept_loo.rds")
+# saveRDS(Mixed_model_loo, "../Models/Mixed_model_loo.rds")
 ```
+
+# Loo model weights
+```{r}
+list_of_loo <- list(Child_model_loo,Global_model_loo, intercept_loo)
+my_model_weights_all <- loo_model_weights(list_of_loo, method="stacking")
+my_model_weights_all
+list_of_loo <- list(Child_model_loo, Global_model_loo)
+my_model_weights <- loo_model_weights(list_of_loo, method="stacking")
+```
+
+```{r}
+my_model_weights_all
+my_model_weights
+
+```
+
+
+
+```{r}
+conditional_effects(Global_model)
+conditional_effects(Child_model)
+```
+# Create kfold
+```{r}
+Child_model_kfold <- brms::kfold(x = Child_model, K = 5,save_fits = TRUE)
+# Child_model_kfold <- readRDS(file = "../Models//Child_model_loo.rds")
+Child_model_kfold
+```
+
+
+```{r}
+Global_model_kfold <-  brms::kfold(x = Global_model, K = 5,save_fits = TRUE)
+# Global_model_kfold <- readRDS(file = "../Models/Global_model_loo.rds")
+Global_model_kfold
+```
+
+```{r}
+Mixed_model_kfold <-  brms::kfold(x = Mixed_model, K = 5,save_fits = TRUE)
+# Mixed_model_kfold <- readRDS(file = "../Models/Mixed_model.rds")
+Mixed_model_kfold
+``` 
+
+
+
+# Save files
+```{r}
+saveRDS(Global_model_kfold, "../Models/Global_model_kfold.rds")
+saveRDS(Child_model_kfold, "../Models/Child_model_kfold.rds")
+saveRDS(Mixed_model_kfold, "../Models/Mixed_model_kfold.rds")
+
+```
+
+
+
+
+
+
+# Check accuracy:
+```{r}
+Global_predict <- kfold_predict(x = Global_model_kfold, method = c("predict"))
+Child_predict <- kfold_predict(x = Child_model_kfold, method = c("predict"))
+Mixed_predict <- kfold_predict(x = Mixed_model_kfold, method = c("predict"))
+wowsie <- Child_predict[[2]]
+
+```
+
+```{r}
+# Global predictions
+predictions_list <- Global_predict
+# Calculate the proportion of correct predictions for each measurement
+correct_counts <- sapply(1:length(predictions_list[[1]]), function(i) {
+  sum(predictions_list[[2]][, i] == predictions_list[[1]][i]) / length(predictions_list[[2]][, i])
+})
+
+mean(correct_counts)
+result_vector <- as.numeric(correct_counts > 0.50)
+mean(result_vector)
+```
+```{r}
+# Child predictions
+predictions_list <- Mixed_predict
+# Calculate the proportion of correct predictions for each measurement
+correct_counts <- sapply(1:length(predictions_list[[1]]), function(i) {
+  sum(predictions_list[[2]][, i] == predictions_list[[1]][i]) / length(predictions_list[[2]][, i])
+})
+mean_predicts <- sapply(1:length(predictions_list[[1]]), function(i) {
+  mean(predictions_list[[2]][, i])
+})
+
+
+
+overview_of_sim <- data.frame(
+    correct_value = prediction_list[[1]],
+    mean_predcition = mean_predicts,
+    precentage_correct = correct_counts)
+
+
+sim_knows_word <- subset(overview_of_sim, correct_value == 1)
+sim_unknown_word <- subset(overview_of_sim, correct_value == 0)
+
+
+mean(sim_knows_word$mean_predcition)
+mean(sim_unknown_word$mean_predcition)
+```
+
+```{r}
+# Global predictions
+predictions_list <- Mixed_predict
+# Calculate the proportion of correct predictions for each measurement
+correct_counts <- sapply(1:length(predictions_list[[1]]), function(i) {
+  sum(predictions_list[[2]][, i] == predictions_list[[1]][i]) / length(predictions_list[[2]][, i])
+})
+
+mean(correct_counts)
+result_vector <- as.numeric(correct_counts > 0.50)
+mean(result_vector)
+```
+
+
+
+
+```{r}
+predicted_responses_child <- posterior_predict(Child_model)
+predictions_list_child <- predicted_responses_child
+
+mean_predicts_child <- sapply(1:length(predictions_list), function(i) {
+  mean(predictions_list[, i])
+})
+
+mean_predicts_child
+overview_of_sim <- cbind(Centrality_DF_t2,mean_predicts_child)
+```
+
+```{r}
+predicted_responses <- posterior_predict(Global_model)
+predictions_list <- predicted_responses
+
+
+mean_predicts <- sapply(1:length(predictions_list), function(i) {
+  mean(predictions_list[, i])
+})
+
+
+overview_of_sim_global <- cbind(Global_centrality_df_t2,mean_predicts)
+
+```
+
+```{r}
+cor.test(overview_of_sim$Semantic_centrality, overview_of_sim_global$Semantic, conf.level = 0.95)
+cor.test(overview_of_sim$Phonological_centrality, overview_of_sim_global$Phonetic, conf.level = 0.95)
+cor.test(overview_of_sim$Word_length_centrality, overview_of_sim_global$Word_length, conf.level = 0.95)
+
+
+cor.test(overview_of_sim$mean_predicts, overview_of_sim_global$mean_predicts, conf.level = 0.95)
+
+wowsie <- data.frame(Child = overview_of_sim$mean_predicts, 
+           Global = overview_of_sim_global$mean_predicts) %>% 
+    mutate(Diff = Child - Global)
+```
+
+
+
+
 
