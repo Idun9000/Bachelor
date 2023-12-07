@@ -8,7 +8,7 @@ output: html_document
 ## Load packages
 ```{r}
 ### install.packages("pacman")
-pacman::p_load(tidyverse, igraph, purrr)
+pacman::p_load(tidyverse, igraph, purrr, RandomWalkRestartMH)
 ```
 
 ## Load files
@@ -40,8 +40,8 @@ rm(phonetics_csv, semantics_csv)
 
 ## Filter this data futher, so we only have data for one kid
 ```{r}
-Child_ID <- 7 # The child we want to investigate
-Time_ID <- 2 # The timepoint for this child
+Child_ID <- 32 # The child we want to investigate
+Time_ID <- 1 # The timepoint for this child
 
 filtered_Words_for_child <- Child_Data %>% 
     filter(child_id == unique(child_id)[Child_ID]) %>% #Only pick this child
@@ -57,13 +57,19 @@ Summary_of_semantics <- as.data.frame(summary(ADJ_MATRIX_SEMANTICS))[,2:3] %>%
     mutate(Summary_Name = str_trim(Summary_Name),
            Summary_Number = as.numeric(str_trim(Summary_Number)))
 
+Summary_of_phonological <- as.data.frame(summary(ADJ_MATRIX_PHONETICS))[,2:3] %>%
+    separate_wider_delim(cols = Freq,delim = ":",names = c("Summary_Name", "Summary_Number")) %>% 
+    mutate(Summary_Name = str_trim(Summary_Name),
+           Summary_Number = as.numeric(str_trim(Summary_Number)))
+
 q3_semantics <- Summary_of_semantics %>% 
      filter(Summary_Name == "3rd Qu.")
 
+q3_phonological <- Summary_of_phonological %>% 
+     filter(Summary_Name == "3rd Qu.")
 
-
-
-mean_of_q3 <- mean(q3_semantics$Summary_Number)
+mean_of_q3_semantics <- mean(q3_semantics$Summary_Number)
+mean_of_q3_phonological <- mean(q3_phonological$Summary_Number)
 
 rm(Summary_of_semantics, q3_semantics) # Clean up environment
 
@@ -72,9 +78,13 @@ rm(Summary_of_semantics, q3_semantics) # Clean up environment
 ### Create a adj matrix of semantic edges
 ```{r}
 # Create matrix edges
-SEMANTIC_EDGES_MATRIX <- ifelse(ADJ_MATRIX_SEMANTICS>=mean_of_q3,yes = 1,no = 0)
+SEMANTIC_EDGES_MATRIX <- ifelse(ADJ_MATRIX_SEMANTICS>=mean_of_q3_semantics,yes = 1,no = 0)
 # find relationship between: Edges / Verticies
 sum(SEMANTIC_EDGES_MATRIX)/length(SEMANTIC_EDGES_MATRIX)
+
+PHONOLOGICAL_EDGES_MATRIX <- ifelse(ADJ_MATRIX_PHONETICS>=mean_of_q3_phonological, yes = 1, no =0)
+
+WORD_LENGTH_EDGES_MATRIX <- as.matrix(read.delim(file = "../Data/Cleaned/WORD_LENGTH_EDGES_MATRIX.txt", sep = ","))
 
 ```
 ## Create adj matrix for child N where an edge occurs if the child know both words.
@@ -106,16 +116,23 @@ KNOWN_WORDS_IDENTIFICATION_MATRIX <- KNOWN_WORDS_IDENTIFICATION_MATRIX - REMOVE_
 ### Multiply known_words_martrix with semantics_edges_matrix
 ```{r}
 CHILD_N_SEMATNIC_EDGES_AT_TIME_N <- SEMANTIC_EDGES_MATRIX * KNOWN_WORDS_IDENTIFICATION_MATRIX
+CHILD_N_PHONOLOGICAL_EDGES_AT_TIME_N <- PHONOLOGICAL_EDGES_MATRIX * KNOWN_WORDS_IDENTIFICATION_MATRIX
+CHILD_N_WORD_LENGTH_EDGES_AT_TIME_N <- WORD_LENGTH_EDGES_MATRIX * KNOWN_WORDS_IDENTIFICATION_MATRIX
 
 GRAPH_OBJECT <- graph_from_adjacency_matrix(CHILD_N_SEMATNIC_EDGES_AT_TIME_N, mode = "undirected")
+GRAPH_OBJECT_PHONO <- graph_from_adjacency_matrix(CHILD_N_PHONOLOGICAL_EDGES_AT_TIME_N, mode = "undirected")
+GRAPH_OBJECT_WORD <- graph_from_adjacency_matrix(CHILD_N_WORD_LENGTH_EDGES_AT_TIME_N, mode = "undirected")
 
-V(GRAPH_OBJECT)$size <- 1
+V(GRAPH_OBJECT)$size <- 10
+V(GRAPH_OBJECT_PHONO)$size <- 10
+V(GRAPH_OBJECT_WORD)$size <- 10
 #V(GRAPH_OBJECT)$label <-
 E(GRAPH_OBJECT)$arrow.mode <- 0
-#plot(GRAPH_OBJECT)
+E(GRAPH_OBJECT_PHONO)$arrow.mode <- 0
+E(GRAPH_OBJECT_WORD)$arrow.mode <- 0
 ```
 
-
+# Semantic
 ```{r}
 ## Create a Unknown variable that contains all words not known by the child.
 names_to_remove <- filtered_Words_for_child %>% 
@@ -133,6 +150,40 @@ plot(GRAPH_OBJECT, layout=l)
 vertices(GRAPH_OBJECT)
 centralization.closeness(GRAPH_OBJECT)
 
+```
+# Phonological
+```{r}
+## Create a Unknown variable that contains all words not known by the child.
+names_to_remove <- filtered_Words_for_child %>% 
+    filter(filtered_Words_for_child$value == 0)
+names_to_remove <- names_to_remove$item_definition
+vertices_to_remove <- which(V(GRAPH_OBJECT_PHONO)$name %in% names_to_remove)
+
+GRAPH_OBJECT_PHONO = delete.vertices(GRAPH_OBJECT_PHONO, vertices_to_remove)
+
+l <- layout_with_kk(GRAPH_OBJECT_PHONO)
+
+
+plot(GRAPH_OBJECT_PHONO, layout=l)
+vertices(GRAPH_OBJECT_PHONO)
+centralization.closeness(GRAPH_OBJECT_PHONO)
+```
+# Word Length
+```{r}
+names_to_remove <- filtered_Words_for_child %>% 
+    filter(filtered_Words_for_child$value == 0)
+names_to_remove <- names_to_remove$item_definition
+vertices_to_remove <- which(V(GRAPH_OBJECT_WORD)$name %in% names_to_remove)
+
+GRAPH_OBJECT_WORD = delete.vertices(GRAPH_OBJECT_WORD, vertices_to_remove)
+
+l <- layout_with_kk(GRAPH_OBJECT_WORD)
+# l <- layout_with_fr(GRAPH_OBJECT)
+# l <- layout_in_circle(GRAPH_OBJECT)
+
+plot(GRAPH_OBJECT_WORD, layout=l)
+vertices(GRAPH_OBJECT_WORD)
+centralization.closeness(GRAPH_OBJECT_WORD)
 ```
 
 
