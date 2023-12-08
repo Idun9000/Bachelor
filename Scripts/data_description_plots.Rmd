@@ -1,0 +1,50 @@
+---
+title: "Data overview"
+author: "Tilde Sloth"
+date: "2023-12-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+pacman::p_load(tidyverse, RColorBrewer)
+```
+
+```{r}
+data <- read_csv("../Bachelor/Data/Cleaned_USA.csv")
+```
+```{r}
+data %>% 
+    ggplot(aes(x = sex, fill = sex)) + geom_bar() + theme_bw()+ scale_y_continuous(labels = scales::comma)
+
+child_subset <- data %>% distinct(child_id, .keep_all = TRUE)
+education_levels<- c("Some Secondary", "Secondary", "Some College", "College", "Some Graduate", "Graduate")
+child_subset <- child_subset %>% 
+    mutate(caregiver_education = factor(caregiver_education,
+                                        ordered = TRUE,
+                                        levels = education_levels))
+
+child_subset %>% ggplot(aes(x = caregiver_education, fill = caregiver_education)) + geom_bar(colour = "black") + scale_y_continuous(labels = scales::comma) + theme_bw() + ggtitle("Caregiver Education") +scale_fill_manual(values=c(
+  "#fff0e0", "#ffe5be", "#ffd592", "#ffca70", 
+  "#fcbf4e", "#f2af22", "#eba400"
+))+ theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+
+
+subset <- data %>% 
+    select(item_definition, category)
+
+unique_subset <- subset %>% distinct(item_definition, .keep_all = TRUE)
+
+unique_subset %>% 
+    ggplot(aes(x=category, fill = category)) + geom_bar(colour = "black") + theme_bw() + scale_fill_manual(values=c(
+  "#fff0e0", "#ffecd5", "#ffe8ca", "#ffe5be", "#ffe1b3", 
+  "#ffdda8", "#ffd99d", "#ffd592", "#ffd286", "#ffce7b", 
+  "#ffca70", "#ffc665", "#ffc25a", "#fcbf4e", "#fabb43", 
+  "#f8b738", "#f5b32d", "#f2af22", "#f0ac16", "#eea80b", 
+  "#eba400"
+)) + ggtitle("Distribution of Word Categories") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
