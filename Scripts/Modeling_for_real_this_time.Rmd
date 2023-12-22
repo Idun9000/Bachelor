@@ -67,7 +67,7 @@ Child4 <- brms::bf(Knows_Word ~ 1 + Semantic_centrality + Phonological_centralit
 
 # Setting priors
 ```{r}
-#get_prior(formula, data = Centrality_DF_t2)
+get_prior(Child2, data = Centrality_DF_t2)
 model_priors <- c(
     prior(normal(0, 3), class = b),
     prior(normal(0, 3), class = Intercept)
@@ -237,10 +237,10 @@ rmse(y = child2_posterior$y, yrep = child2_posterior$yrep)
 predictions <- child2_posterior$yrep
 true_labels <- child2_posterior$y 
 
-#predicted_probs <- apply(predictions, 2, mean)
+predicted_probs <- apply(predictions, 2, mean)
 
 # Convert predictions to binary labels
-predicted_labels <- ifelse(predictions > 0.5, 1, 0)  
+predicted_labels <- ifelse(predicted_probs > 0.5, 1, 0)  
 
 # Calculate accuracy for each fold
 accuracy <- mean(predicted_labels == true_labels)
@@ -384,10 +384,10 @@ rmse(y = global2_posterior$y, yrep = global2_posterior$yrep)
 predictions2 <- global2_posterior$yrep
 true_labels2 <- global2_posterior$y 
 
-#predicted_probs2 <- apply(predictions2, 2, mean)
+predicted_probs2 <- apply(predictions2, 2, mean)
 
 # Convert predictions to binary labels
-predicted_labels2 <- ifelse(predictions2 > 0.5, 1, 0)  
+predicted_labels2 <- ifelse(predicted_probs2 > 0.5, 1, 0)  
 
 # Calculate accuracy for each fold
 accuracy2 <- mean(predicted_labels2 == true_labels2)

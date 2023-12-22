@@ -14,7 +14,7 @@ pacman::p_load(tidyverse, RColorBrewer)
 ```
 
 ```{r}
-data <- read_csv("../Bachelor/Data/Cleaned_USA.csv")
+data <- read_csv("../Data/Cleaned_USA.csv")
 ```
 ```{r}
 data %>% 
@@ -45,6 +45,6 @@ unique_subset %>%
   "#ffca70", "#ffc665", "#ffc25a", "#fcbf4e", "#fabb43", 
   "#f8b738", "#f5b32d", "#f2af22", "#f0ac16", "#eea80b", 
   "#eba400"
-)) + ggtitle("Distribution of Word Categories") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+)) + ggtitle("Word Categories") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 ```
 
